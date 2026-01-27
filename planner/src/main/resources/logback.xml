@@ -1,0 +1,35 @@
+<configuration>
+
+  <!-- Console appender -->
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>
+        %d{HH:mm:ss} %-5level [%thread] %logger{36} - %msg%n
+      </pattern>
+    </encoder>
+  </appender>
+
+
+  <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>logs/planner.log</file>
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <fileNamePattern>logs/planner.%d{yyyy-MM-dd}.log</fileNamePattern>
+      <maxHistory>7</maxHistory>
+    </rollingPolicy>
+    <encoder>
+      <pattern>%d %-5level %logger - %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <!-- Default log level -->
+  <root level="INFO">
+    <appender-ref ref="STDOUT"/>
+    <appender-ref ref="FILE" />
+  </root>
+
+  <!-- Your planner packages -->
+  <logger name="nil.lazzy07.planner" level="DEBUG"/>
+  <logger name="nil.lazzy07.llm" level="DEBUG"/>
+  <logger name="nil.lazzy07.domain" level="DEBUG"/>
+</configuration>
+
