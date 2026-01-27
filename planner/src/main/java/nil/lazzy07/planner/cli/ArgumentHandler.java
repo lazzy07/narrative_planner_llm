@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-01-26 22:56:06
-// Date modified: 2026-01-27 01:08:19
+// Date modified: 2026-01-27 01:51:38
 * ------
 */
 
@@ -11,6 +11,8 @@ package nil.lazzy07.planner.cli;
 
 import org.apache.commons.cli.*;
 import org.apache.commons.cli.HelpFormatter;
+
+import nil.lazzy07.planner.logging.LoggerConfigs;
 
 public class ArgumentHandler {
   public static Options buildOptions() {
@@ -20,6 +22,11 @@ public class ArgumentHandler {
     configFilePath.setRequired(true);
     configFilePath.setArgName("CONFIG");
     options.addOption(configFilePath);
+
+    Option logLevel = new Option(null, "log-level", true,
+        "Logging level (ERROR, WARN, INFO, DEBUG, TRACE)");
+    logLevel.setArgName("LEVEL");
+    options.addOption(logLevel);
 
     Option help = new Option("h", "help", false, "Print this help message");
     options.addOption(help);
@@ -38,6 +45,10 @@ public class ArgumentHandler {
         printHelp(options);
 
         return null;
+      }
+
+      if (cmd.hasOption("log-level")) {
+        LoggerConfigs.configureLoggingLevel(cmd.getOptionValue("log-level").toUpperCase());
       }
 
       String config = cmd.getOptionValue("config");
