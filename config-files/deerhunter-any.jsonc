@@ -1,0 +1,38 @@
+{
+  "search": {
+    // Search configurations
+    "type": {
+      "name": "breadth-first", // Options: breadth-first
+      "config": {},
+    },
+    "cost": {
+      "type": "none", // Options: none
+      "config": {},
+    },
+    "plan": {
+      "max-length": 7, // Max length of the plan untill the planner should stop, if planner did not find a solution.
+      "utility": 1, // Utility that planner needs to achieve.
+    },
+  },
+  "llm": {
+    // LLM API Configurations
+    "prompt": {
+      "version": "v1.0",
+      "directory": "prompt-templates",
+      "converter": "converter/deerhunter.jar",
+    },
+    "cache": {
+      "enabled": true,
+      "directory": ".openai-cache/",
+    },
+  },
+  "domain": {
+    // Domain configurations
+    "name": "deerhunter",
+    "file": "problems/deerhunter.txt",
+  },
+  "output": {
+    "save": true,
+    "directory": "output/",
+  },
+}
