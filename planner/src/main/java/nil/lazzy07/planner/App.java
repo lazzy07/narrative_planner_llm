@@ -5,6 +5,8 @@ import org.slf4j.LoggerFactory;
 
 import nil.lazzy07.planner.cli.ArgumentHandler;
 import nil.lazzy07.planner.cli.ParsedCLIArguments;
+import nil.lazzy07.planner.config.ConfigFile;
+import nil.lazzy07.planner.config.ConfigFileParser;
 
 /**
  * Hello world!
@@ -22,5 +24,14 @@ public class App {
 
     log.info("Parsing CLI Arguments completed");
 
+    ConfigFileParser.Init(parsedCLIArguments.getConfigFilePath());
+    ConfigFile configurations = ConfigFileParser.GetConfigFile();
+
+    if (configurations == null) {
+      log.error("Configuration file reading error, application is quitting");
+      return;
+    }
+
+    log.info("Current planner configurations: " + configurations);
   }
 }
