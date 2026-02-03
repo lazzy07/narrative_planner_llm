@@ -12,6 +12,7 @@
     "plan": {
       "max-length": 7, // Max length of the plan untill the planner should stop, if planner did not find a solution.
       "utility": 1, // Utility that planner needs to achieve.
+      "max-nodes": 5000,
     },
   },
   "llm": {
@@ -19,16 +20,21 @@
     "prompt": {
       "version": "v1.0",
       "directory": "prompt-templates",
-      "converter": "converter/deerhunter.jar",
+      "explaination": true, // Append the explaination to (coming from the LLM) why that action was taken.
     },
     "cache": {
       "enabled": true,
       "directory": ".openai-cache/",
     },
+    "model": {
+      "name": "chatgpt-5-mini",
+      "config": {},
+    },
   },
   "domain": {
     // Domain configurations
     "name": "deerhunter",
+    "converter": "converter/deerhunter.jar",
     "file": "problems/deerhunter.txt",
   },
   "output": {
