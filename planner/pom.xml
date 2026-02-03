@@ -69,11 +69,13 @@
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-annotations</artifactId>
     </dependency>
-
+    <dependency>
+      <groupId>edu.uky.nil</groupId>
+      <artifactId>sabre</artifactId>
+    </dependency>
   </dependencies>
 
   <build>
-
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>

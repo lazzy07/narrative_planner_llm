@@ -58,6 +58,41 @@
         <version>2.21</version>
         <scope>compile</scope>
       </dependency>
+      <dependency>
+        <groupId>edu.uky.nil</groupId>
+        <artifactId>sabre</artifactId>
+        <version>1.0.0-private</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-install-plugin</artifactId>
+          <version>3.1.1</version>
+          <executions>
+            <execution>
+              <id>install-sabre</id>
+              <inherited>false</inherited>
+              <phase>initialize</phase>
+              <goals>
+                <goal>install-file</goal>
+              </goals>
+              <configuration>
+                <file>${project.basedir}/lib/sabre.jar</file>
+                <groupId>edu.uky.nil</groupId>
+                <artifactId>sabre</artifactId>
+                <version>1.0.0-private</version>
+                <packaging>jar</packaging>
+                <generatePom>true</generatePom>
+              </configuration>
+            </execution>
+          </executions>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
 </project>
