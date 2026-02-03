@@ -9,12 +9,8 @@
 
 package nil.lazzy07.llm;
 
-import nil.lazzy07.domain.DomainConverter;
-
 public class LLMApi {
   public void printHello() {
-    DomainConverter dc = new DomainConverter();
-    dc.printHello();
 
     System.out.println("Hello from LLMApi");
   }

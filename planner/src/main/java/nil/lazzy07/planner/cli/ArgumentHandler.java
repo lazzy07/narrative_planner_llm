@@ -13,8 +13,12 @@ import org.apache.commons.cli.*;
 import org.apache.commons.cli.HelpFormatter;
 
 import nil.lazzy07.planner.logging.LoggerConfigs;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ArgumentHandler {
+  private static final Logger log = LoggerFactory.getLogger(ArgumentHandler.class);
+
   public static Options buildOptions() {
     Options options = new Options();
 
@@ -23,7 +27,7 @@ public class ArgumentHandler {
     configFilePath.setArgName("CONFIG");
     options.addOption(configFilePath);
 
-    Option logLevel = new Option(null, "log-level", true,
+    Option logLevel = new Option("l", "log-level", true,
         "Logging level (ERROR, WARN, INFO, DEBUG, TRACE)");
     logLevel.setArgName("LEVEL");
     options.addOption(logLevel);
@@ -48,7 +52,9 @@ public class ArgumentHandler {
       }
 
       if (cmd.hasOption("log-level")) {
-        LoggerConfigs.configureLoggingLevel(cmd.getOptionValue("log-level").toUpperCase());
+        String logLevel = cmd.getOptionValue("log-level").toUpperCase();
+        LoggerConfigs.configureLoggingLevel(logLevel);
+        log.info("Log Level is set to: {}", logLevel);
       }
 
       String config = cmd.getOptionValue("config");

@@ -17,7 +17,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record ConfigFile(Domain domain, Search search, LLM llm, Output output) {
   @JsonIgnoreProperties(ignoreUnknown = true)
-  public record Domain(String name, String file, String converter) {
+  public record Domain(String name, String file) {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
@@ -39,7 +39,7 @@ public record ConfigFile(Domain domain, Search search, LLM llm, Output output) {
   @JsonIgnoreProperties(ignoreUnknown = true)
   public record LLM(Prompt prompt, Cache cache, Model model) {
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record Prompt(String version, String directory) {
+    public record Prompt(String version, String directory, boolean explanation) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

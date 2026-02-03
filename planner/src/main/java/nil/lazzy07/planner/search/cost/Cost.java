@@ -8,6 +8,8 @@
 */
 package nil.lazzy07.planner.search.cost;
 
-public abstract class Cost {
+import nil.lazzy07.planner.search.util.SearchNode;
 
+public abstract class Cost {
+  public abstract long calculateCost(SearchNode node);
 }

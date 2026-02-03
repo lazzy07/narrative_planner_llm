@@ -1,0 +1,15 @@
+<general_description>
+
+<plan_description>
+
+<plan>
+
+<current_state_description>
+
+<current_state>
+
+<available_actions_description>
+
+<available_actions>
+
+

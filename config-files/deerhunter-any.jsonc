@@ -20,7 +20,7 @@
     "prompt": {
       "version": "v1.0",
       "directory": "prompt-templates",
-      "explaination": true, // Append the explaination to (coming from the LLM) why that action was taken.
+      "explanation": true, // Append the explaination to (coming from the LLM) why that action was taken.
     },
     "cache": {
       "enabled": true,
@@ -34,7 +34,6 @@
   "domain": {
     // Domain configurations
     "name": "deerhunter",
-    "converter": "converter/deerhunter.jar",
     "file": "problems/deerhunter.txt",
   },
   "output": {
