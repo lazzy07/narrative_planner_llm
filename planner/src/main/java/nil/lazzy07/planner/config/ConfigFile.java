@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 20:56:55
-// Date modified: 2026-02-02 21:15:06
+// Date modified: 2026-02-03 09:24:55
 * ------
 */
 
@@ -17,7 +17,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record ConfigFile(Domain domain, Search search, LLM llm, Output output) {
   @JsonIgnoreProperties(ignoreUnknown = true)
-  public record Domain(String name, String file) {
+  public record Domain(String name, String file, String converter) {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
@@ -31,18 +31,23 @@ public record ConfigFile(Domain domain, Search search, LLM llm, Output output) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record Plan(@JsonProperty("max-length") int maxLength, int utility) {
+    public record Plan(@JsonProperty("max-length") int maxLength, int utility,
+        @JsonProperty("max-nodes") int maxNodes) {
     }
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
-  public record LLM(Prompt prompt, Cache cache) {
+  public record LLM(Prompt prompt, Cache cache, Model model) {
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record Prompt(String version, String directory, String converter) {
+    public record Prompt(String version, String directory) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Cache(boolean enabled, String directory) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record Model(String name, Map<String, Object> config) {
     }
   }
 
