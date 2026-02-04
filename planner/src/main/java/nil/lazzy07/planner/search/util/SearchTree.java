@@ -1,14 +1,39 @@
 package nil.lazzy07.planner.search.util;
 
-public class SearchTree {
-  private long visited = 0;
-  private long expanded = 0;
+import nil.lazzy07.planner.search.type.SearchType;
 
-  private void incrementVisited(){
-    this.visited += 1;
+public class SearchTree {
+  private final ProgressionTreeMap treeMap;
+  private SearchNode head;
+  private long noOfVisitedNodes;
+  private SearchType searchType;
+
+  public SearchTree(ProgressionTreeMap treeMap, SearchType searchType) {
+    this.treeMap = treeMap;
+    this.searchType = searchType;
   }
 
-  private void incrementExpanded(){
-    this.expanded += 1;
+  public void initSearchTree(long initialNodeId) {
+    SearchNode newNode = new SearchNode(initialNodeId);
+
+    this.head = newNode;
+
+    this.searchType.addNode(newNode);
+  }
+
+  public ProgressionTreeMap getTreeMap() {
+    return treeMap;
+  }
+
+  public SearchNode getHead() {
+    return head;
+  }
+
+  public long getNoOfVisitedNodes() {
+    return noOfVisitedNodes;
+  }
+
+  public SearchType getSearchType() {
+    return searchType;
   }
 }

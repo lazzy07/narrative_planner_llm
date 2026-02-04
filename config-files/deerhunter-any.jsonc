@@ -2,11 +2,11 @@
   "search": {
     // Search configurations
     "type": {
-      "name": "breadth-first", // Options: breadth-first
+      "name": "best-first", // Options: breadth-first
       "config": {},
     },
     "cost": {
-      "type": "none", // Options: none
+      "type": "action-cost", // Options: none
       "config": {},
     },
     "plan": {

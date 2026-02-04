@@ -3,11 +3,11 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:51:18
-// Date modified: 2026-02-02 23:06:24
+// Date modified: 2026-02-03 20:58:20
 * ------
 */
 
-package nil.lazzy07.planner.search;
+package nil.lazzy07.planner.search.util;
 
 import java.util.ArrayList;
 import java.util.List;

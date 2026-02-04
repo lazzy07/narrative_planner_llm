@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:01:17
-// Date modified: 2026-02-02 22:15:18
+// Date modified: 2026-02-04 02:07:00
 * ------
 */
 
@@ -16,7 +16,16 @@ import edu.uky.cs.nil.sabre.prog.ProgressionSearch;
 import edu.uky.cs.nil.sabre.ptree.ProgressionTree;
 import edu.uky.cs.nil.sabre.ptree.ProgressionTreeSpace;
 import nil.lazzy07.planner.config.ConfigFile;
-import nil.lazzy07.planner.search.ProgressionTreeMap;
+import nil.lazzy07.planner.config.ConfigFile.Search.Cost;
+import nil.lazzy07.planner.config.ConfigFile.Search.Type;
+import nil.lazzy07.planner.search.SearchSession;
+import nil.lazzy07.planner.search.cost.CostType;
+import nil.lazzy07.planner.search.cost.CostTypeFactory;
+import nil.lazzy07.planner.search.type.SearchType;
+import nil.lazzy07.planner.search.type.SearchTypeFactory;
+import nil.lazzy07.planner.search.util.ProgressionTreeMap;
+import nil.lazzy07.planner.search.util.SearchNode;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +48,7 @@ public class PlannerCore {
 
     initSession();
     initProgressionTreeMap();
+    initSearchNodeRef();
   }
 
   public ConfigFile getConfigs() {
@@ -61,43 +71,55 @@ public class PlannerCore {
     return progressionTreeMap;
   }
 
-  public void runSearch(){
+  public void runSearchSession() {
+    Type searchTypeConfigs = this.configs.search().type();
+    Cost costTypeConfigs = this.configs.search().cost();
 
+    CostType costType = CostTypeFactory.CreateCostType(costTypeConfigs.type());
+    SearchType searchType = SearchTypeFactory.CreateSearchType(searchTypeConfigs.name(), costType);
+
+    SearchSession searchSession = new SearchSession(this.configs.search().plan(), this.progressionTreeMap, searchType);
+    searchSession.initSearch();
   }
 
-  private void initSession(){
+  private void initSession() {
     this.session = new Session();
     ConfigFile.Domain domain = this.configs.domain();
-      try {
-        session.setProblem(new File(this.configs.domain().file()));
-        this.search = (ProgressionSearch) session.getSearch();
-        log.trace("Session created and problem set to: {}", domain.name());
-      } catch (IOException e) {
-        log.error("Error reading the sabre problem file: {}", domain.file());
-        throw new RuntimeException(e);
-      } catch (ParseException e) {
-        log.error("Error parsing the sabre problem file: {}", domain.file());
-        throw new RuntimeException(e);
-      }
+    try {
+      session.setProblem(new File(this.configs.domain().file()));
+      this.search = (ProgressionSearch) session.getSearch();
+      log.trace("Session created and problem set to: {}", domain.name());
+    } catch (IOException e) {
+      log.error("Error reading the sabre problem file: {}", domain.file());
+      throw new RuntimeException(e);
+    } catch (ParseException e) {
+      log.error("Error parsing the sabre problem file: {}", domain.file());
+      throw new RuntimeException(e);
+    }
   }
 
-  private void initProgressionTreeMap(){
-      try {
-        Field spaceField = ProgressionSearch.class.getDeclaredField("space");
-        spaceField.setAccessible(true);
+  private void initSearchNodeRef() {
+    SearchNode.SetProgressionTreeMap(this.getProgressionTreeMap());
+  }
 
-        ProgressionTreeSpace space = (ProgressionTreeSpace) spaceField.get(this.search);
-        Field treeField = ProgressionTreeSpace.class.getDeclaredField("tree");
-        treeField.setAccessible(true);
-        ProgressionTree tree = (ProgressionTree) treeField.get(space);
+  private void initProgressionTreeMap() {
+    try {
+      Field spaceField = ProgressionSearch.class.getDeclaredField("space");
+      spaceField.setAccessible(true);
 
-        this.compiledProblem = this.search.problem;
-        this.progressionTreeMap = new ProgressionTreeMap(tree, this.compiledProblem);
+      ProgressionTreeSpace space = (ProgressionTreeSpace) spaceField.get(this.search);
+      Field treeField = ProgressionTreeSpace.class.getDeclaredField("tree");
+      treeField.setAccessible(true);
+      ProgressionTree tree = (ProgressionTree) treeField.get(space);
 
-      } catch (NoSuchFieldException | IllegalAccessException e) {
-        log.error("Error creating the progression tree");
-        throw new RuntimeException(e);
-      }
+      this.compiledProblem = this.search.problem;
+      this.progressionTreeMap = new ProgressionTreeMap(tree, this.compiledProblem);
+      log.trace("Progression treemap created");
+
+    } catch (NoSuchFieldException | IllegalAccessException e) {
+      log.error("Error creating the progression tree");
+      throw new RuntimeException(e);
+    }
   }
 
 }

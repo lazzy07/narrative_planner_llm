@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 23:48:40
-// Date modified: 2026-02-03 00:18:23
+// Date modified: 2026-02-04 03:14:30
 * ------
 */
 
@@ -11,30 +11,51 @@ package nil.lazzy07.planner.search.util;
 
 import java.util.List;
 
-import nil.lazzy07.llm.prompt.Prompt;
-import nil.lazzy07.planner.search.ProgressionTreeMap;
+import nil.lazzy07.llm.prompt.SearchPrompt;
 
 public class SearchNode {
   private static ProgressionTreeMap treeMap;
 
   private final long nodeId;
-  private final Prompt prompt;
+  private SearchNode parentNode;
+  private List<SearchNode> childNodes;
 
-  private boolean isExplained;
-  private List<SearchNode> explainedChildNodes;
+  private float confidence;
+  private String explaination;
 
-  public SearchNode(long nodeId, Prompt prompt, boolean isExplained) {
+  public SearchNode(long nodeId) {
     this.nodeId = nodeId;
-    this.prompt = prompt;
-    this.isExplained = isExplained;
-  }
-
-  public SearchNode(long nodeId, Prompt prompt) {
-    this.nodeId = nodeId;
-    this.prompt = prompt;
   }
 
   public static void SetProgressionTreeMap(ProgressionTreeMap treeMap) {
     SearchNode.treeMap = treeMap;
+  }
+
+  public static ProgressionTreeMap getTreeMap() {
+    return treeMap;
+  }
+
+  public long getNodeId() {
+    return nodeId;
+  }
+
+  public float getConfidence() {
+    return this.confidence;
+  }
+
+  public SearchPrompt getPrompt() {
+    return prompt;
+  }
+
+  public SearchNode getParentNode() {
+    return parentNode;
+  }
+
+  public List<SearchNode> getChildNodes() {
+    return childNodes;
+  }
+
+  public String getExplaination() {
+    return explaination;
   }
 }

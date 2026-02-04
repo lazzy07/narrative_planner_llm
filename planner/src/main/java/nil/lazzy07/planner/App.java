@@ -37,10 +37,8 @@ public class App {
     log.info("Current planner configurations: {}", configurations);
 
     PlannerCore plannerCore = new PlannerCore(configurations);
-    SearchNode.SetProgressionTreeMap(plannerCore.getProgressionTreeMap());
 
     log.info("Planner setup is complete");
-
 
   }
 }
