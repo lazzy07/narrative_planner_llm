@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 23:48:40
-// Date modified: 2026-02-04 03:14:30
+// Date modified: 2026-02-06 15:08:11
 * ------
 */
 
@@ -43,9 +43,9 @@ public class SearchNode {
     return this.confidence;
   }
 
-  public SearchPrompt getPrompt() {
-    return prompt;
-  }
+  // public SearchPrompt getPrompt() {
+  // return prompt;
+  // }
 
   public SearchNode getParentNode() {
     return parentNode;

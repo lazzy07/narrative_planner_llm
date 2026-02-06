@@ -27,9 +27,9 @@
     <appender-ref ref="FILE" />
   </root>
 
-  <!-- Your planner packages -->
-  <logger name="nil.lazzy07.planner" level="DEBUG"/>
-  <logger name="nil.lazzy07.llm" level="DEBUG"/>
-  <logger name="nil.lazzy07.domain" level="DEBUG"/>
+  <!-- Planner packages -->
+  <logger name="nil.lazzy07.planner" />
+  <logger name="nil.lazzy07.llm" />
+  <logger name="nil.lazzy07.domain" />
 </configuration>
 

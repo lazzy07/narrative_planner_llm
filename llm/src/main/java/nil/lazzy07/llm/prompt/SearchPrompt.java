@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 23:52:47
-// Date modified: 2026-02-04 03:03:13
+// Date modified: 2026-02-06 14:02:46
 * ------
 */
 
@@ -77,8 +77,8 @@ public class SearchPrompt {
     return null;
   }
 
-  public static String GetPrompt(Plan currentPlan, ArrayList<CompiledAction> availableActions,
+  public static String GetPrompt(Plan<CompiledAction> currentPlan, ArrayList<CompiledAction> availableActions,
       DomainConverter converter) {
-
+    return "";
   }
 }
