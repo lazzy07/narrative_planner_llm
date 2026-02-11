@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:51:18
-// Date modified: 2026-02-03 20:58:20
+// Date modified: 2026-02-11 00:06:16
 * ------
 */
 
@@ -25,9 +25,10 @@ import edu.uky.cs.nil.sabre.logic.Comparison;
 import edu.uky.cs.nil.sabre.logic.False;
 import edu.uky.cs.nil.sabre.logic.Value;
 import edu.uky.cs.nil.sabre.ptree.ProgressionTree;
+import nil.lazzy07.common.search.GenericTreeMap;
 import edu.uky.cs.nil.sabre.Action;
 
-public class ProgressionTreeMap {
+public class ProgressionTreeMap implements GenericTreeMap {
   public final ProgressionTree tree;
   public final CompiledProblem problem;
   private final TreeMap<Long, Integer> distance = new TreeMap<>();

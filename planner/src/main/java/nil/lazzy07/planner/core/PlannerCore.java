@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:01:17
-// Date modified: 2026-02-04 02:07:00
+// Date modified: 2026-02-11 03:01:51
 * ------
 */
 
@@ -15,6 +15,8 @@ import edu.uky.cs.nil.sabre.io.ParseException;
 import edu.uky.cs.nil.sabre.prog.ProgressionSearch;
 import edu.uky.cs.nil.sabre.ptree.ProgressionTree;
 import edu.uky.cs.nil.sabre.ptree.ProgressionTreeSpace;
+import nil.lazzy07.domain.DomainConverterFactory;
+import nil.lazzy07.domain.converters.DomainConverter;
 import nil.lazzy07.planner.config.ConfigFile;
 import nil.lazzy07.planner.config.ConfigFile.Search.Cost;
 import nil.lazzy07.planner.config.ConfigFile.Search.Type;
@@ -48,7 +50,6 @@ public class PlannerCore {
 
     initSession();
     initProgressionTreeMap();
-    initSearchNodeRef();
   }
 
   public ConfigFile getConfigs() {
@@ -80,6 +81,9 @@ public class PlannerCore {
 
     SearchSession searchSession = new SearchSession(this.configs.search().plan(), this.progressionTreeMap, searchType);
     searchSession.initSearch();
+
+    DomainConverter domainConverter = DomainConverterFactory.GetDomainConverter(this.configs.domain().name(),
+        this.compiledProblem.initial, this.configs.search().plan().utility());
   }
 
   private void initSession() {
@@ -96,10 +100,6 @@ public class PlannerCore {
       log.error("Error parsing the sabre problem file: {}", domain.file());
       throw new RuntimeException(e);
     }
-  }
-
-  private void initSearchNodeRef() {
-    SearchNode.SetProgressionTreeMap(this.getProgressionTreeMap());
   }
 
   private void initProgressionTreeMap() {

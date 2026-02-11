@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 23:48:40
-// Date modified: 2026-02-06 15:08:11
+// Date modified: 2026-02-11 00:10:03
 * ------
 */
 
@@ -11,28 +11,18 @@ package nil.lazzy07.planner.search.util;
 
 import java.util.List;
 
-import nil.lazzy07.llm.prompt.SearchPrompt;
+import nil.lazzy07.common.search.GenericSearchNode;
 
-public class SearchNode {
-  private static ProgressionTreeMap treeMap;
-
+public class SearchNode implements GenericSearchNode {
   private final long nodeId;
-  private SearchNode parentNode;
-  private List<SearchNode> childNodes;
+  private GenericSearchNode parentNode;
+  private List<GenericSearchNode> childNodes;
 
   private float confidence;
   private String explaination;
 
   public SearchNode(long nodeId) {
     this.nodeId = nodeId;
-  }
-
-  public static void SetProgressionTreeMap(ProgressionTreeMap treeMap) {
-    SearchNode.treeMap = treeMap;
-  }
-
-  public static ProgressionTreeMap getTreeMap() {
-    return treeMap;
   }
 
   public long getNodeId() {
@@ -47,11 +37,11 @@ public class SearchNode {
   // return prompt;
   // }
 
-  public SearchNode getParentNode() {
+  public GenericSearchNode getParentNode() {
     return parentNode;
   }
 
-  public List<SearchNode> getChildNodes() {
+  public List<GenericSearchNode> getChildNodes() {
     return childNodes;
   }
 
