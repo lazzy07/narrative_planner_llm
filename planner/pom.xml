@@ -39,6 +39,13 @@
       <version>${project.version}</version>
     </dependency>
 
+    <dependency>
+      <groupId>nil.lazzy07</groupId>
+      <artifactId>common</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+
     <!-- Source: https://mvnrepository.com/artifact/commons-cli/commons-cli -->
     <dependency>
         <groupId>commons-cli</groupId>
