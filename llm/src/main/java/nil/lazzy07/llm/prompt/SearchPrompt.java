@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 23:52:47
-// Date modified: 2026-02-06 14:02:46
+// Date modified: 2026-02-11 02:53:43
 * ------
 */
 
@@ -12,11 +12,9 @@ package nil.lazzy07.llm.prompt;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.ArrayList;
 
-import edu.uky.cs.nil.sabre.Plan;
-import edu.uky.cs.nil.sabre.comp.CompiledAction;
-import nil.lazzy07.domain.converters.DomainConverter;
+import nil.lazzy07.common.search.GenericSearchNode;
+import nil.lazzy07.common.search.GenericTreeMap;
 
 public class SearchPrompt {
   private static String systemPrompt;
@@ -37,6 +35,9 @@ public class SearchPrompt {
 
   public static final String allActionDescription = """
       These are all of the actions that could possibly happen next in the story:
+      """;
+
+  public static final String finalDescription = """
       """;
 
   public static String GetSystemPrompt() {
@@ -77,8 +78,11 @@ public class SearchPrompt {
     return null;
   }
 
-  public static String GetPrompt(Plan<CompiledAction> currentPlan, ArrayList<CompiledAction> availableActions,
-      DomainConverter converter) {
-    return "";
+  public static String GetPrompt(GenericSearchNode genericSearchNode) {
+    return SearchPrompt.promptTemplate
+        .replace("<general_description", SearchPrompt.generalDescription)
+        .replace("<plan_description>", SearchPrompt.beforePlanDescription)
+        .replace("<available_actions_description>", SearchPrompt.allActionDescription)
+        .replace("<final_description>", SearchPrompt.finalDescription);
   }
 }
