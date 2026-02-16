@@ -1,5 +1,7 @@
 <general_description>
 
+<domain_description>
+
 <plan_description>
 
 <plan>
