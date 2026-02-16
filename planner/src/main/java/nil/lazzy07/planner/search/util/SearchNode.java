@@ -3,12 +3,13 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 23:48:40
-// Date modified: 2026-02-11 00:10:03
+// Date modified: 2026-02-16 01:39:09
 * ------
 */
 
 package nil.lazzy07.planner.search.util;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import nil.lazzy07.common.search.GenericSearchNode;
@@ -22,6 +23,7 @@ public class SearchNode implements GenericSearchNode {
   private String explaination;
 
   public SearchNode(long nodeId) {
+    this.childNodes = new ArrayList<>();
     this.nodeId = nodeId;
   }
 
@@ -47,5 +49,9 @@ public class SearchNode implements GenericSearchNode {
 
   public String getExplaination() {
     return explaination;
+  }
+
+  public void addChildNode(GenericSearchNode node) {
+    this.childNodes.add(node);
   }
 }
