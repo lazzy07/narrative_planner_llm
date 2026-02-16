@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 23:52:47
-// Date modified: 2026-02-16 15:58:01
+// Date modified: 2026-02-16 17:02:08
 * ------
 */
 
@@ -12,7 +12,13 @@ package nil.lazzy07.llm.prompt;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
 
+import edu.uky.cs.nil.sabre.Action;
+import edu.uky.cs.nil.sabre.Plan;
+import edu.uky.cs.nil.sabre.comp.CompiledAction;
+import edu.uky.cs.nil.sabre.logic.Assignment;
 import nil.lazzy07.domain.converters.DomainConverter;
 
 public class SearchPrompt {
@@ -86,13 +92,56 @@ public class SearchPrompt {
     return null;
   }
 
-  public static String GetPrompt() {
+  private static String planAsStr(Plan<Action> plan) {
+    StringBuilder strBuilder = new StringBuilder();
+
+    for (Action action : plan) {
+      String actionStr = SearchPrompt.domainConverter.action((CompiledAction) action);
+      strBuilder.append(actionStr).append("\n");
+    }
+
+    if (strBuilder.isEmpty()) {
+      strBuilder.append("This is the initial state of the story, nothing have happened yet.");
+    }
+
+    return strBuilder.toString();
+  }
+
+  private static String availableActionAsStr(ArrayList<CompiledAction> availableActions) {
+    StringBuilder strBuilder = new StringBuilder();
+
+    int i = 1;
+    for (CompiledAction action : availableActions) {
+      String actionStr = SearchPrompt.domainConverter.action(action);
+      strBuilder.append(i).append(") ").append(actionStr).append("\n");
+      i++;
+    }
+
+    return strBuilder.toString();
+  }
+
+  private static String stateToStr(List<Assignment> state) {
+    StringBuilder strBuilder = new StringBuilder();
+
+    for (Assignment assignment : state) {
+      String stateVal = SearchPrompt.domainConverter.fluent(assignment.fluent, assignment.value);
+      strBuilder.append(stateVal);
+    }
+
+    return strBuilder.toString();
+  }
+
+  public static String GetPrompt(Plan<Action> plan, ArrayList<CompiledAction> availableActions,
+      List<Assignment> state) {
+
     return SearchPrompt.GetPromptTemplate()
         .replace("<general_description>", SearchPrompt.generalDescription)
         .replace("<domain_description>", SearchPrompt.domainConverter.domainDescription)
         .replace("<plan_description>", SearchPrompt.beforePlanDescription)
         .replace("<available_actions_description>", SearchPrompt.allActionDescription)
         .replace("<current_state_description>", SearchPrompt.beforeCurrentStateDescription)
-        .replace("<final_description>", SearchPrompt.finalDescription);
+        .replace("<final_description>", SearchPrompt.finalDescription)
+        .replace("<current_state>", stateToStr(state)).replace("<plan>", planAsStr(plan))
+        .replace("<available_actions>", availableActionAsStr(availableActions));
   }
 }

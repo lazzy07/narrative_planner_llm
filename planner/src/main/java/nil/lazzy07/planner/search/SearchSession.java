@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:16:07
-// Date modified: 2026-02-16 14:56:27
+// Date modified: 2026-02-16 16:59:32
 * ------
 */
 
@@ -13,7 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import nil.lazzy07.llm.model.LLMApi;
-import nil.lazzy07.llm.prompt.SearchPrompt;
 import nil.lazzy07.planner.config.ConfigFile.Search.Plan;
 import nil.lazzy07.planner.search.type.SearchType;
 import nil.lazzy07.planner.search.util.ProgressionTreeMap;
@@ -36,6 +35,8 @@ public class SearchSession {
     this.searchType = searchType;
     this.planConfigs = planConfigs;
     this.llmApi = api;
+
+    SearchNode.SetProgressionTreeMap(treeMap);
   }
 
   public void initSearch() {
