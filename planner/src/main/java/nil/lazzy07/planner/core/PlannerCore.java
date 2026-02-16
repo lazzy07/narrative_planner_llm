@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:01:17
-// Date modified: 2026-02-11 03:01:51
+// Date modified: 2026-02-16 01:24:49
 * ------
 */
 
@@ -17,7 +17,10 @@ import edu.uky.cs.nil.sabre.ptree.ProgressionTree;
 import edu.uky.cs.nil.sabre.ptree.ProgressionTreeSpace;
 import nil.lazzy07.domain.DomainConverterFactory;
 import nil.lazzy07.domain.converters.DomainConverter;
+import nil.lazzy07.llm.LLMApiFactory;
+import nil.lazzy07.llm.model.LLMApi;
 import nil.lazzy07.planner.config.ConfigFile;
+import nil.lazzy07.planner.config.ConfigFile.Search;
 import nil.lazzy07.planner.config.ConfigFile.Search.Cost;
 import nil.lazzy07.planner.config.ConfigFile.Search.Type;
 import nil.lazzy07.planner.search.SearchSession;
@@ -26,7 +29,6 @@ import nil.lazzy07.planner.search.cost.CostTypeFactory;
 import nil.lazzy07.planner.search.type.SearchType;
 import nil.lazzy07.planner.search.type.SearchTypeFactory;
 import nil.lazzy07.planner.search.util.ProgressionTreeMap;
-import nil.lazzy07.planner.search.util.SearchNode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,17 +75,23 @@ public class PlannerCore {
   }
 
   public void runSearchSession() {
-    Type searchTypeConfigs = this.configs.search().type();
-    Cost costTypeConfigs = this.configs.search().cost();
+    Search searchConfigs = this.configs.search();
+    Type searchTypeConfigs = searchConfigs.type();
+    Cost costTypeConfigs = searchConfigs.cost();
 
     CostType costType = CostTypeFactory.CreateCostType(costTypeConfigs.type());
     SearchType searchType = SearchTypeFactory.CreateSearchType(searchTypeConfigs.name(), costType);
 
-    SearchSession searchSession = new SearchSession(this.configs.search().plan(), this.progressionTreeMap, searchType);
+    SearchSession searchSession = new SearchSession(searchConfigs.plan(), this.progressionTreeMap, searchType);
     searchSession.initSearch();
 
     DomainConverter domainConverter = DomainConverterFactory.GetDomainConverter(this.configs.domain().name(),
-        this.compiledProblem.initial, this.configs.search().plan().utility());
+        this.compiledProblem.initial, searchConfigs.plan().utility());
+
+    LLMApi api = LLMApiFactory.GetLLMApi(this.configs.llm().model().name());
+    api.init(domainConverter);
+
+    searchSession.startSearch(api);
   }
 
   private void initSession() {
