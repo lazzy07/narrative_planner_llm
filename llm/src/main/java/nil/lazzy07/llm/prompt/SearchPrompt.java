@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 23:52:47
-// Date modified: 2026-02-11 02:53:43
+// Date modified: 2026-02-16 15:58:01
 * ------
 */
 
@@ -13,13 +13,14 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 
-import nil.lazzy07.common.search.GenericSearchNode;
-import nil.lazzy07.common.search.GenericTreeMap;
+import nil.lazzy07.domain.converters.DomainConverter;
 
 public class SearchPrompt {
   private static String systemPrompt;
   private static String promptTemplate;
   private static String promptFolder;
+  private static String promptVersion;
+  private static DomainConverter domainConverter;
 
   public static final String generalDescription = """
       I will describe the setting of a story and give you a list of actions characters can take next. Your job is to tell me which of the actions makes sense based on what the characters want.
@@ -38,7 +39,14 @@ public class SearchPrompt {
       """;
 
   public static final String finalDescription = """
+      This is the final description
       """;
+
+  public static void Init(String promptFolder, String promptVersion, DomainConverter domainConverter) {
+    SearchPrompt.promptFolder = promptFolder;
+    SearchPrompt.promptVersion = promptVersion;
+    SearchPrompt.domainConverter = domainConverter;
+  }
 
   public static String GetSystemPrompt() {
     if (SearchPrompt.systemPrompt == null) {
@@ -49,7 +57,7 @@ public class SearchPrompt {
   }
 
   private static String ReadSystemPrompt() {
-    File systemPrompt = new File(promptFolder + "system-prompt.txt");
+    File systemPrompt = new File(promptFolder + promptVersion + "/system-prompt.txt");
     try {
       return Files.readString(systemPrompt.toPath());
     } catch (IOException e) {
@@ -68,7 +76,7 @@ public class SearchPrompt {
   }
 
   private static String ReadPromptTemplate() {
-    File promptTemplate = new File(promptFolder + "prompt-template.txt");
+    File promptTemplate = new File(promptFolder + promptVersion + "/prompt-template.txt");
     try {
       return Files.readString(promptTemplate.toPath());
     } catch (IOException e) {
@@ -78,11 +86,13 @@ public class SearchPrompt {
     return null;
   }
 
-  public static String GetPrompt(GenericSearchNode genericSearchNode) {
-    return SearchPrompt.promptTemplate
-        .replace("<general_description", SearchPrompt.generalDescription)
+  public static String GetPrompt() {
+    return SearchPrompt.GetPromptTemplate()
+        .replace("<general_description>", SearchPrompt.generalDescription)
+        .replace("<domain_description>", SearchPrompt.domainConverter.domainDescription)
         .replace("<plan_description>", SearchPrompt.beforePlanDescription)
         .replace("<available_actions_description>", SearchPrompt.allActionDescription)
+        .replace("<current_state_description>", SearchPrompt.beforeCurrentStateDescription)
         .replace("<final_description>", SearchPrompt.finalDescription);
   }
 }

@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:01:17
-// Date modified: 2026-02-16 02:02:42
+// Date modified: 2026-02-16 15:56:29
 * ------
 */
 
@@ -19,8 +19,10 @@ import nil.lazzy07.domain.DomainConverterFactory;
 import nil.lazzy07.domain.converters.DomainConverter;
 import nil.lazzy07.llm.LLMApiFactory;
 import nil.lazzy07.llm.model.LLMApi;
+import nil.lazzy07.llm.prompt.SearchPrompt;
 import nil.lazzy07.planner.config.ConfigFile;
 import nil.lazzy07.planner.config.ConfigFile.Search;
+import nil.lazzy07.planner.config.ConfigFile.LLM.Prompt;
 import nil.lazzy07.planner.config.ConfigFile.Search.Cost;
 import nil.lazzy07.planner.config.ConfigFile.Search.Type;
 import nil.lazzy07.planner.search.SearchSession;
@@ -87,6 +89,9 @@ public class PlannerCore {
 
     LLMApi api = LLMApiFactory.GetLLMApi(this.configs.llm().model().name());
     api.init(domainConverter);
+
+    Prompt promptConfigs = this.configs.llm().prompt();
+    SearchPrompt.Init(promptConfigs.directory(), promptConfigs.version(), domainConverter);
 
     SearchSession searchSession = new SearchSession(searchConfigs.plan(), this.progressionTreeMap, searchType, api);
     searchSession.initSearch();
