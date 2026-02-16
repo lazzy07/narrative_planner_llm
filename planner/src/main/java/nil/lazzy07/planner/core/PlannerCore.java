@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:01:17
-// Date modified: 2026-02-16 01:24:49
+// Date modified: 2026-02-16 02:02:42
 * ------
 */
 
@@ -82,16 +82,16 @@ public class PlannerCore {
     CostType costType = CostTypeFactory.CreateCostType(costTypeConfigs.type());
     SearchType searchType = SearchTypeFactory.CreateSearchType(searchTypeConfigs.name(), costType);
 
-    SearchSession searchSession = new SearchSession(searchConfigs.plan(), this.progressionTreeMap, searchType);
-    searchSession.initSearch();
-
     DomainConverter domainConverter = DomainConverterFactory.GetDomainConverter(this.configs.domain().name(),
         this.compiledProblem.initial, searchConfigs.plan().utility());
 
     LLMApi api = LLMApiFactory.GetLLMApi(this.configs.llm().model().name());
     api.init(domainConverter);
 
-    searchSession.startSearch(api);
+    SearchSession searchSession = new SearchSession(searchConfigs.plan(), this.progressionTreeMap, searchType, api);
+    searchSession.initSearch();
+
+    searchSession.startSearch();
   }
 
   private void initSession() {

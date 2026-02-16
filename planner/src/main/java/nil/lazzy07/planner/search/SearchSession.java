@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:16:07
-// Date modified: 2026-02-16 01:43:30
+// Date modified: 2026-02-16 02:00:39
 * ------
 */
 
@@ -28,11 +28,13 @@ public class SearchSession {
   private long noOfVisitedNodes = 0;
   private long noOfGeneratedNodes = 1;
   private Plan planConfigs;
+  private LLMApi llmApi;
 
-  public SearchSession(Plan planConfigs, ProgressionTreeMap treeMap, SearchType searchType) {
+  public SearchSession(Plan planConfigs, ProgressionTreeMap treeMap, SearchType searchType, LLMApi api) {
     this.treeMap = treeMap;
     this.searchType = searchType;
     this.planConfigs = planConfigs;
+    this.llmApi = api;
   }
 
   public void initSearch() {
@@ -40,8 +42,8 @@ public class SearchSession {
     this.searchTree.initSearchTree(0);
   }
 
-  public void startSearch(LLMApi api) {
-    log.info("Search started with LLMApi: {}", api.getType());
+  public void startSearch() {
+    log.info("Search started with LLMApi: {}", this.llmApi.getType());
     while (this.searchType.isEmpty()) {
       // Get the next node
       SearchNode currentNode = this.searchType.getNextNode();
