@@ -19,7 +19,7 @@
     // LLM API Configurations
     "prompt": {
       "version": "v1.0",
-      "directory": "prompt-templates",
+      "directory": "prompt-templates/",
       "explanation": true, // Append the explaination to (coming from the LLM) why that action was taken.
     },
     "cache": {
