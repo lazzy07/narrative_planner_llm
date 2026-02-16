@@ -3,12 +3,13 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-01-25 22:44:36
-// Date modified: 2026-02-11 03:32:16
+// Date modified: 2026-02-15 17:09:15
 * ------
 */
 
 package nil.lazzy07.llm;
 
+import nil.lazzy07.llm.model.LLAMA8BApi;
 import nil.lazzy07.llm.model.LLMApi;
 
 public class LLMApiFactory {
@@ -17,7 +18,7 @@ public class LLMApiFactory {
       case "chatgpt-5-mini":
         return null;
       case "llama-8b":
-        return null;
+        return new LLAMA8BApi();
       default:
         return null;
     }
