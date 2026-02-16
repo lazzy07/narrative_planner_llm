@@ -27,7 +27,7 @@
       "directory": ".openai-cache/",
     },
     "model": {
-      "name": "chatgpt-5-mini",
+      "name": "llama-8b",
       "config": {},
     },
   },
