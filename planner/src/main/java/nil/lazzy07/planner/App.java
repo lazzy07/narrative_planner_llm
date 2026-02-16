@@ -1,7 +1,6 @@
 package nil.lazzy07.planner;
 
 import nil.lazzy07.planner.core.PlannerCore;
-import nil.lazzy07.planner.search.util.SearchNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,8 +36,6 @@ public class App {
     log.info("Current planner configurations: {}", configurations);
 
     PlannerCore plannerCore = new PlannerCore(configurations);
-
-    log.info("Planner setup is complete");
-
+    plannerCore.runSearchSession();
   }
 }
