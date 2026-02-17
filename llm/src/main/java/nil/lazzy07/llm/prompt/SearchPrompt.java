@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 23:52:47
-// Date modified: 2026-02-16 17:02:08
+// Date modified: 2026-02-17 13:31:56
 * ------
 */
 
@@ -44,9 +44,7 @@ public class SearchPrompt {
       These are all of the actions that could possibly happen next in the story:
       """;
 
-  public static final String finalDescription = """
-      This is the final description
-      """;
+  public static String finalInstruction;
 
   public static void Init(String promptFolder, String promptVersion, DomainConverter domainConverter) {
     SearchPrompt.promptFolder = promptFolder;
@@ -66,6 +64,25 @@ public class SearchPrompt {
     File systemPrompt = new File(promptFolder + promptVersion + "/system-prompt.txt");
     try {
       return Files.readString(systemPrompt.toPath());
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+    return null;
+  }
+
+  public static String GetFinalInstruction() {
+    if (SearchPrompt.finalInstruction == null) {
+      SearchPrompt.finalInstruction = ReadFinalInstruction();
+    }
+
+    return SearchPrompt.finalInstruction;
+  }
+
+  private static String ReadFinalInstruction() {
+    File finalInstruction = new File(promptFolder + promptVersion + "/final-instruction.txt");
+    try {
+      return Files.readString(finalInstruction.toPath());
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -140,8 +157,9 @@ public class SearchPrompt {
         .replace("<plan_description>", SearchPrompt.beforePlanDescription)
         .replace("<available_actions_description>", SearchPrompt.allActionDescription)
         .replace("<current_state_description>", SearchPrompt.beforeCurrentStateDescription)
-        .replace("<final_description>", SearchPrompt.finalDescription)
-        .replace("<current_state>", stateToStr(state)).replace("<plan>", planAsStr(plan))
+        .replace("<final_description>", SearchPrompt.GetFinalInstruction())
+        .replace("<current_state>", stateToStr(state))
+        .replace("<plan>", planAsStr(plan))
         .replace("<available_actions>", availableActionAsStr(availableActions));
   }
 }
