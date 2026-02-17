@@ -1,0 +1,19 @@
+Instructions:
+
+- Evaluate each action independently.
+- Only use the beliefs and goals of the character performing the action.
+- Do not use external or omniscient knowledge.
+- Consider survival, goals, and situational rationality.
+
+Return ONLY valid JSON in this format:
+
+[
+  {
+    "actionId": number,
+    "confidence": float between 0 and 1,
+    "isExplained": boolean,
+    "explanation": "one short sentence"
+  }
+]
+
+Do not include anything outside the JSON.
