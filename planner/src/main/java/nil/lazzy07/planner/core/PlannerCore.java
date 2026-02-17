@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:01:17
-// Date modified: 2026-02-16 15:56:29
+// Date modified: 2026-02-17 14:58:09
 * ------
 */
 
@@ -87,8 +87,9 @@ public class PlannerCore {
     DomainConverter domainConverter = DomainConverterFactory.GetDomainConverter(this.configs.domain().name(),
         this.compiledProblem.initial, searchConfigs.plan().utility());
 
-    LLMApi api = LLMApiFactory.GetLLMApi(this.configs.llm().model().name());
-    api.init(domainConverter);
+    LLMApi api = LLMApiFactory.GetLLMApi(this.configs.llm().model().name(), this.configs.llm().cache().enabled(),
+        this.configs.llm().cache().directory(), this.configs.domain().name());
+    api.init();
 
     Prompt promptConfigs = this.configs.llm().prompt();
     SearchPrompt.Init(promptConfigs.directory(), promptConfigs.version(), domainConverter);

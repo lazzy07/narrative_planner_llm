@@ -24,7 +24,7 @@
     },
     "cache": {
       "enabled": true,
-      "directory": ".openai-cache/",
+      "directory": ".llama-8b-cache/",
     },
     "model": {
       "name": "llama-8b",

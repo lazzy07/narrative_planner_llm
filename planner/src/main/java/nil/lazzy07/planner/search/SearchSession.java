@@ -3,16 +3,21 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:16:07
-// Date modified: 2026-02-16 16:59:32
+// Date modified: 2026-02-17 15:54:13
 * ------
 */
 
 package nil.lazzy07.planner.search;
 
+import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import nil.lazzy07.common.llm.ActionEvaluation;
+import nil.lazzy07.common.llm.ActionEvaluationParser;
 import nil.lazzy07.llm.model.LLMApi;
+import nil.lazzy07.llm.prompt.SearchPrompt;
 import nil.lazzy07.planner.config.ConfigFile.Search.Plan;
 import nil.lazzy07.planner.search.type.SearchType;
 import nil.lazzy07.planner.search.util.ProgressionTreeMap;
@@ -49,7 +54,17 @@ public class SearchSession {
     while (!this.searchType.isEmpty()) {
       // Get the next node
       SearchNode currentNode = this.searchType.getNextNode();
-      log.info("Current prompt: {}", currentNode.getPrompt());
+      String response = this.llmApi.query(SearchPrompt.GetSystemPrompt(), currentNode.getPrompt());
+
+      List<ActionEvaluation> evaluations = ActionEvaluationParser.parseActionEvaluations(response);
+
+      // Now you can use it safely:
+      for (ActionEvaluation eval : evaluations) {
+        System.out.println("Action: " + eval.actionId());
+        System.out.println("Confidence: " + eval.confidence());
+        System.out.println("Makes sense? " + eval.isExplained());
+        System.out.println("Explanation: " + eval.explanation());
+      }
 
       // Check if the utility achieved
       if (this.treeMap.getUtility(currentNode.getNodeId()) >= this.planConfigs.utility()) {
