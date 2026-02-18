@@ -7,25 +7,54 @@ You must strictly follow these rules:
 1. Evaluate each action ONLY from the perspective of the character who would perform it.
 2. Use only the beliefs, desires, and knowledge available to that character.
 3. Do NOT use omniscient knowledge unless the character also believes it.
-4. Focus on whether the action makes sense given:
-   - The character’s goals
-   - The character’s current situation
-   - The character’s beliefs
-   - The character’s survival instinct (all characters want to be alive unless explicitly stated otherwise)
-5. An action makes sense if it is rational and aligned with the character’s goals and beliefs.
-6. An action does NOT make sense if:
-   - It contradicts the character’s goals
-   - It serves no clear purpose
-   - It is irrational given their beliefs
+4. Judge actions based on:
+   - The actor’s goals (including survival)
+   - The actor’s current situation
+   - The actor’s beliefs and knowledge
+   - Plausible motivation and urgency
 
-Evaluation Rules:
+CRITICAL: "isExplained" MUST NOT be always true.
+- You must mark some actions as false when they are not motivated, not beneficial, contradictory, or pointless for the actor given their beliefs.
+- If an action is merely possible but has no clear reason now, set "isExplained" to false (or at most weak confidence if barely plausible).
+- If an action conflicts with the actor’s goals (especially staying alive), set "isExplained" to false.
 
-- Evaluate EACH action independently.
-- Do NOT assume actions are mutually exclusive.
-- Do NOT rank actions relative to each other.
-- Assign confidence as a float between 0 and 1.
-- 1.0 means the action strongly makes sense.
-- 0.0 means the action clearly does not make sense.
+Hard rules for setting isExplained:
+
+Set "isExplained" = false if ANY of these are true:
+A) Goal conflict: the action undermines survival or stated goals.
+B) No motivation: the actor has no believable reason to do it right now (no urgency, no benefit).
+C) Contradiction: the action is inconsistent with the actor’s beliefs/knowledge (e.g., acting on information they do not have).
+D) Dominated by inaction: doing nothing would be more rational than taking this action right now.
+
+Set "isExplained" = true ONLY if the action has a clear plausible purpose right now, such as:
+- improves safety/survival
+- advances a stated desire/goal
+- gathers needed information
+- reduces risk or prepares for a foreseeable threat
+- is a necessary step toward a goal the actor is pursuing
+
+Confidence scoring (MUST be graded, not binary):
+
+- confidence MUST be a float in [0.0, 1.0] indicating how strongly the action is a good choice for the actor right now.
+- Use the full range and avoid only 0.0 and 1.0 except in extreme cases.
+
+Anchors:
+- 0.00–0.10: Clearly nonsensical, contradictory, or harmful.
+- 0.11–0.30: Mostly pointless or poorly motivated; weak justification.
+- 0.31–0.50: Somewhat plausible but low benefit/urgency.
+- 0.51–0.70: Reasonable and beneficial; a good option.
+- 0.71–0.85: Strong option; clearly advances goals/safety.
+- 0.86–0.95: Excellent option; highly aligned and timely.
+- 0.96–1.00: Near-certain best action; ONLY if it overwhelmingly dominates all others.
+
+Consistency constraints (to prevent “always true” and enable ranking):
+1) Across all actions given, set "isExplained" = false for at least 2 actions unless literally every action has a clear purpose right now.
+2) If you set "isExplained" = true for all actions, you MUST instead re-evaluate and mark the least motivated actions as false.
+3) If there is no clear standout best action, keep top confidence below 0.90.
+
+Explanation:
+- "explanation" must be exactly one short sentence explaining why it makes sense (or why it does not).
+- Do NOT mention these rules.
 
 Output Rules (MANDATORY):
 
@@ -34,7 +63,6 @@ Output Rules (MANDATORY):
 - Do NOT include any text outside the JSON.
 - Use double quotes for ALL keys and string values.
 - All fields are required.
-- explanation must be exactly one short sentence.
 
 Required JSON format:
 
@@ -48,3 +76,4 @@ Required JSON format:
 ]
 
 Return exactly one object per action provided.
+
