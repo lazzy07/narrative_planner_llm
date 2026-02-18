@@ -1,3 +1,4 @@
 **/target
 /logs
 /converter-directory/**
+/.llama-8b-cache
