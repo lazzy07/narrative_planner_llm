@@ -54,7 +54,7 @@ public class LLAMA8BApi extends LLMApi {
         URI.create("http://127.0.0.1:8080/v1/chat/completions"),
         Duration.ofSeconds(60),
         42,
-        512,
+        4096,
         2);
   }
 
@@ -187,7 +187,11 @@ public class LLAMA8BApi extends LLMApi {
           "- explanation must be one short sentence.\n\n" +
           "Here is the invalid output to repair:\n" + output;
 
-      Map<String, Object> repairParams = new LinkedHashMap<>(parameters);
+      Map<String, Object> repairParams = new LinkedHashMap<>();
+      if (parameters != null) {
+        repairParams.putAll(parameters);
+      }
+
       repairParams.put("repairAttempt", attempt);
 
       // IMPORTANT:
