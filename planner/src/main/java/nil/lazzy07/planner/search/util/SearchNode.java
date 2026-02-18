@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 23:48:40
-// Date modified: 2026-02-16 16:47:17
+// Date modified: 2026-02-17 18:53:04
 * ------
 */
 
@@ -45,6 +45,14 @@ public class SearchNode implements GenericSearchNode {
     List<Assignment> currentState = SearchNode.treeMap.getState(this.nodeId);
 
     this.prompt = SearchPrompt.GetPrompt(currentPlan, availableActions, currentState);
+  }
+
+  public void setParentNode(GenericSearchNode node) {
+    this.parentNode = node;
+  }
+
+  public void setConfidence(float confidence) {
+    this.confidence = confidence;
   }
 
   public long getNodeId() {
