@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:16:07
-// Date modified: 2026-02-20 11:30:48
+// Date modified: 2026-02-20 14:49:08
 * ------
 */
 
@@ -65,7 +65,7 @@ public class SearchSession {
     return selectedActions;
   }
 
-  private int avaialableActionSize(SearchNode node) {
+  private int availableActionSize(SearchNode node) {
     ArrayList<CompiledAction> available = this.treeMap.getAvailableActions(node.getNodeId());
     return available.size();
   }
@@ -100,7 +100,15 @@ public class SearchSession {
       // Get the next node
       SearchNode currentNode = this.searchType.getNextNode();
       long currentNodeId = currentNode.getNodeId();
-      if (avaialableActionSize(currentNode) == 0) {
+      log.trace("\n**************\nNode selected by the search:  {}", currentNodeId);
+
+      log.trace("Prompt: \n{}\n", currentNode.getPrompt());
+
+      ArrayList<CompiledAction> availableActions = currentNode.getAvailableActions();
+
+      log.trace("Available Actions for the node: {}", availableActions);
+
+      if (availableActions.size() == 0) {
         log.debug("No available actions for node: {}", currentNodeId);
         continue;
       }
@@ -119,6 +127,7 @@ public class SearchSession {
       }
 
       long planLength = this.treeMap.getPlan(currentNodeId).size();
+      log.trace("Current plan length: {}", planLength);
 
       if (planLength >= this.planConfigs.maxLength()) {
         log.info("Node removed since node {}'s length is larger than the maxLength {} node's plan length: {}",
@@ -128,10 +137,15 @@ public class SearchSession {
       }
 
       String response = this.llmApi.query(SearchPrompt.GetSystemPrompt(), currentNode.getPrompt());
+      log.trace("LLM API response: \n{}\n", response);
 
       List<ActionEvaluation> evaluations = ActionEvaluationParser.parseActionEvaluations(response);
+      log.trace("Evaluations from the LLM: {}", evaluations);
 
       List<ActionEvaluation> selectedEvaluations = getSelectedActions(evaluations);
+
+      log.trace("Evaluations selected by the LLM: {}", selectedEvaluations);
+
       log.debug("For node: {} # of available actions: {}", currentNodeId, selectedEvaluations.size());
       this.expandSearch(currentNode, selectedEvaluations);
 
@@ -139,6 +153,8 @@ public class SearchSession {
 
       log.info("Evaluation completed: NodeID: {} Selected actions: {} Visited: {}", currentNodeId,
           selectedEvaluations.size(), this.noOfVisitedNodes);
+
+      log.trace("\n************************************************\n");
 
       this.noOfVisitedNodes++;
     }

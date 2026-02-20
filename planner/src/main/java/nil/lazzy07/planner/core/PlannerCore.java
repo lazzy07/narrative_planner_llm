@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:01:17
-// Date modified: 2026-02-20 11:42:23
+// Date modified: 2026-02-20 12:13:06
 * ------
 */
 
@@ -102,11 +102,9 @@ public class PlannerCore {
 
     Plan<Action> plan = searchSession.startSearch();
 
-    if (plan != null) {
-      SearchResults results = new SearchResults(configs, searchSession.getNoOfVisitedNodes(),
-          searchSession.getNoOfGeneratedNodes(), plan);
-      log.debug(results.toJsonString());
-    }
+    SearchResults results = new SearchResults(configs, searchSession.getNoOfVisitedNodes(),
+        searchSession.getNoOfGeneratedNodes(), plan);
+    log.debug("Planner results: ", results.toJsonString());
   }
 
   private void initSession() {

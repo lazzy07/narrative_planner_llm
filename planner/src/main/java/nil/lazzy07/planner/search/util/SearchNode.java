@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 23:48:40
-// Date modified: 2026-02-17 18:53:04
+// Date modified: 2026-02-20 14:45:23
 * ------
 */
 
@@ -25,6 +25,7 @@ public class SearchNode implements GenericSearchNode {
   private GenericSearchNode parentNode;
   private List<GenericSearchNode> childNodes;
   private String prompt;
+  private ArrayList<CompiledAction> availableActions;
 
   private float confidence;
   private String explaination;
@@ -36,15 +37,15 @@ public class SearchNode implements GenericSearchNode {
   public SearchNode(long nodeId) {
     this.childNodes = new ArrayList<>();
     this.nodeId = nodeId;
+    this.availableActions = SearchNode.treeMap.getAvailableActions(this.nodeId);
     this.generatePrompt();
   }
 
   private void generatePrompt() {
-    ArrayList<CompiledAction> availableActions = SearchNode.treeMap.getAvailableActions(this.nodeId);
     Plan<Action> currentPlan = SearchNode.treeMap.getPlan(this.nodeId);
     List<Assignment> currentState = SearchNode.treeMap.getState(this.nodeId);
 
-    this.prompt = SearchPrompt.GetPrompt(currentPlan, availableActions, currentState);
+    this.prompt = SearchPrompt.GetPrompt(currentPlan, this.availableActions, currentState);
   }
 
   public void setParentNode(GenericSearchNode node) {
@@ -81,5 +82,13 @@ public class SearchNode implements GenericSearchNode {
 
   public void addChildNode(GenericSearchNode node) {
     this.childNodes.add(node);
+  }
+
+  public static ProgressionTreeMap getTreeMap() {
+    return treeMap;
+  }
+
+  public ArrayList<CompiledAction> getAvailableActions() {
+    return availableActions;
   }
 }

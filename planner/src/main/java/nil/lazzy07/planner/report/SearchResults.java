@@ -3,10 +3,13 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-20 09:53:17
-// Date modified: 2026-02-20 11:35:59
+// Date modified: 2026-02-20 11:50:52
 * ------
 */
 package nil.lazzy07.planner.report;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -42,6 +45,16 @@ public class SearchResults {
         + plan + "]";
   }
 
+  private List<String> planToStr() {
+    List<String> planStr = new ArrayList<>();
+
+    for (Action action : this.plan) {
+      planStr.add(action.toString());
+    }
+
+    return planStr;
+  }
+
   public String toJsonString() {
     ObjectMapper objMapper = new ObjectMapper();
     ObjectNode node = objMapper.createObjectNode();
@@ -64,6 +77,10 @@ public class SearchResults {
     node.put("promptVersion", configs.llm().prompt().version());
 
     node.put("planFound", this.planFound);
+
+    if (planFound) {
+      node.putPOJO("plan", planToStr());
+    }
 
     try {
       return objMapper.writeValueAsString(node);
