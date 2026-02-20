@@ -9,9 +9,6 @@ import nil.lazzy07.planner.cli.ParsedCLIArguments;
 import nil.lazzy07.planner.config.ConfigFile;
 import nil.lazzy07.planner.config.ConfigFileParser;
 
-/**
- * Hello world!
- */
 public class App {
 
   private static final Logger log = LoggerFactory.getLogger(App.class);

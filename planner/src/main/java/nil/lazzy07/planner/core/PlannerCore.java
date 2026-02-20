@@ -3,12 +3,14 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:01:17
-// Date modified: 2026-02-17 14:58:09
+// Date modified: 2026-02-20 11:42:23
 * ------
 */
 
 package nil.lazzy07.planner.core;
 
+import edu.uky.cs.nil.sabre.Action;
+import edu.uky.cs.nil.sabre.Plan;
 import edu.uky.cs.nil.sabre.Session;
 import edu.uky.cs.nil.sabre.comp.CompiledProblem;
 import edu.uky.cs.nil.sabre.io.ParseException;
@@ -25,6 +27,7 @@ import nil.lazzy07.planner.config.ConfigFile.Search;
 import nil.lazzy07.planner.config.ConfigFile.LLM.Prompt;
 import nil.lazzy07.planner.config.ConfigFile.Search.Cost;
 import nil.lazzy07.planner.config.ConfigFile.Search.Type;
+import nil.lazzy07.planner.report.SearchResults;
 import nil.lazzy07.planner.search.SearchSession;
 import nil.lazzy07.planner.search.cost.CostType;
 import nil.lazzy07.planner.search.cost.CostTypeFactory;
@@ -97,7 +100,13 @@ public class PlannerCore {
     SearchSession searchSession = new SearchSession(searchConfigs.plan(), this.progressionTreeMap, searchType, api);
     searchSession.initSearch();
 
-    searchSession.startSearch();
+    Plan<Action> plan = searchSession.startSearch();
+
+    if (plan != null) {
+      SearchResults results = new SearchResults(configs, searchSession.getNoOfVisitedNodes(),
+          searchSession.getNoOfGeneratedNodes(), plan);
+      log.debug(results.toJsonString());
+    }
   }
 
   private void initSession() {

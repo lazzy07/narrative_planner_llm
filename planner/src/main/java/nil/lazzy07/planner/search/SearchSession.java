@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:16:07
-// Date modified: 2026-02-18 01:16:48
+// Date modified: 2026-02-20 11:30:48
 * ------
 */
 
@@ -15,12 +15,14 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import edu.uky.cs.nil.sabre.Action;
 import edu.uky.cs.nil.sabre.comp.CompiledAction;
 import nil.lazzy07.common.llm.ActionEvaluation;
 import nil.lazzy07.common.llm.ActionEvaluationParser;
 import nil.lazzy07.llm.model.LLMApi;
 import nil.lazzy07.llm.prompt.SearchPrompt;
 import nil.lazzy07.planner.config.ConfigFile.Search.Plan;
+import nil.lazzy07.planner.report.SearchResults;
 import nil.lazzy07.planner.search.type.SearchType;
 import nil.lazzy07.planner.search.util.ProgressionTreeMap;
 import nil.lazzy07.planner.search.util.SearchNode;
@@ -91,34 +93,36 @@ public class SearchSession {
     }
   }
 
-  public void startSearch() {
+  public edu.uky.cs.nil.sabre.Plan<Action> startSearch() {
     log.info("Search started with LLMApi: {}", this.llmApi.getType());
+
     while (!this.searchType.isEmpty()) {
       // Get the next node
       SearchNode currentNode = this.searchType.getNextNode();
-
+      long currentNodeId = currentNode.getNodeId();
       if (avaialableActionSize(currentNode) == 0) {
-        log.debug("No available actions for node: {}", currentNode.getNodeId());
+        log.debug("No available actions for node: {}", currentNodeId);
         continue;
       }
 
       // Check if the utility achieved
-      if (this.treeMap.getUtility(currentNode.getNodeId()) >= this.planConfigs.utility()) {
+      if (this.treeMap.getUtility(currentNodeId) >= this.planConfigs.utility()) {
+        edu.uky.cs.nil.sabre.Plan<Action> plan = this.treeMap.getPlan(currentNodeId);
         log.info("Planner achieved the utility: \n{} \n Nodes visited: {} \n Nodes expanded: {}",
-            this.treeMap.getPlan(currentNode.getNodeId()), this.noOfVisitedNodes, this.noOfGeneratedNodes);
-        return;
+            plan, this.noOfVisitedNodes, this.noOfGeneratedNodes);
+        return plan;
       }
 
       if (noOfVisitedNodes >= this.planConfigs.maxNodes()) {
         log.info("Planner exhaused the search space, max # of nodes visited: {}", this.planConfigs.maxNodes());
-        return;
+        return null;
       }
 
-      long planLength = this.treeMap.getPlan(currentNode.getNodeId()).size();
+      long planLength = this.treeMap.getPlan(currentNodeId).size();
 
       if (planLength >= this.planConfigs.maxLength()) {
         log.info("Node removed since node {}'s length is larger than the maxLength {} node's plan length: {}",
-            currentNode.getNodeId(),
+            currentNodeId,
             this.planConfigs.maxLength(), planLength);
         continue;
       }
@@ -128,18 +132,19 @@ public class SearchSession {
       List<ActionEvaluation> evaluations = ActionEvaluationParser.parseActionEvaluations(response);
 
       List<ActionEvaluation> selectedEvaluations = getSelectedActions(evaluations);
-      log.debug("For node: {} # of available actions: {}", currentNode.getNodeId(), selectedEvaluations.size());
+      log.debug("For node: {} # of available actions: {}", currentNodeId, selectedEvaluations.size());
       this.expandSearch(currentNode, selectedEvaluations);
 
-      log.info("Current plan: {}", this.treeMap.getPlan(currentNode.getNodeId()));
+      log.info("Current plan: {}", this.treeMap.getPlan(currentNodeId));
 
-      log.info("Evaluation completed: NodeID: {} Selected actions: {} Visited: {}", currentNode.getNodeId(),
+      log.info("Evaluation completed: NodeID: {} Selected actions: {} Visited: {}", currentNodeId,
           selectedEvaluations.size(), this.noOfVisitedNodes);
 
       this.noOfVisitedNodes++;
     }
 
     log.warn("Planner finished without finding any solution. (Search queue is empty)");
+    return null;
   }
 
   public long getNoOfGeneratedNodes() {
