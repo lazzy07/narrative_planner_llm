@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-03 19:05:17
-// Date modified: 2026-02-03 21:06:06
+// Date modified: 2026-02-17 21:23:17
 * ------
 */
 
@@ -26,6 +26,8 @@ public abstract class SearchType {
   public abstract SearchNode peekNextNode();
 
   public abstract SearchNode getNextNode();
+
+  public abstract void removeNode(SearchNode node);
 
   public abstract void addNode(SearchNode node);
 

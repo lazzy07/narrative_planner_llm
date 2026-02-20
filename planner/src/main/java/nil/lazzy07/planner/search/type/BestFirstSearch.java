@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-03 19:39:18
-// Date modified: 2026-02-04 03:16:19
+// Date modified: 2026-02-17 21:25:06
 * ------
 */
 
@@ -24,6 +24,10 @@ public class BestFirstSearch extends SearchType {
         (n1, n2) -> Float.compare(
             this.getCost().calculateCost(n1),
             this.getCost().calculateCost(n2)));
+  }
+
+  public void removeNode(SearchNode node) {
+    queue.remove(node);
   }
 
   @Override

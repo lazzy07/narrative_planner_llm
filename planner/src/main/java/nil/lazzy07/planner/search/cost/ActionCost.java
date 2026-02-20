@@ -5,6 +5,6 @@ import nil.lazzy07.planner.search.util.SearchNode;
 public class ActionCost extends CostType {
   @Override
   public float calculateCost(SearchNode node) {
-    return Float.MAX_VALUE - node.getConfidence();
+    return 5.0f - node.getConfidence();
   }
 }

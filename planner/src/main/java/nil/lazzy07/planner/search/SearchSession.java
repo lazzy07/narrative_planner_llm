@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:16:07
-// Date modified: 2026-02-17 19:12:51
+// Date modified: 2026-02-18 01:16:48
 * ------
 */
 
@@ -63,9 +63,15 @@ public class SearchSession {
     return selectedActions;
   }
 
+  private int avaialableActionSize(SearchNode node) {
+    ArrayList<CompiledAction> available = this.treeMap.getAvailableActions(node.getNodeId());
+    return available.size();
+  }
+
   private void expandSearch(SearchNode currentNode, List<ActionEvaluation> selectedEvaluations) {
     for (ActionEvaluation selected : selectedEvaluations) {
       ArrayList<CompiledAction> availableActions = this.treeMap.getAvailableActions(currentNode.getNodeId());
+
       CompiledAction currentAction = availableActions.get(selected.actionId() - 1);
 
       if (currentAction == null) {
@@ -75,10 +81,10 @@ public class SearchSession {
       long nextNodeId = this.treeMap.getNextNode(currentNode.getNodeId(), currentAction);
 
       SearchNode newNode = new SearchNode(nextNodeId);
-      newNode.setParentNode(newNode);
+      newNode.setParentNode(currentNode);
 
       currentNode.addChildNode(newNode);
-      currentNode.setConfidence((float) selected.confidence());
+      newNode.setConfidence((float) selected.confidence());
 
       this.searchType.addNode(newNode);
       this.noOfGeneratedNodes++;
@@ -90,18 +96,11 @@ public class SearchSession {
     while (!this.searchType.isEmpty()) {
       // Get the next node
       SearchNode currentNode = this.searchType.getNextNode();
-      String response = this.llmApi.query(SearchPrompt.GetSystemPrompt(), currentNode.getPrompt());
 
-      List<ActionEvaluation> evaluations = ActionEvaluationParser.parseActionEvaluations(response);
-
-      List<ActionEvaluation> selectedEvaluations = getSelectedActions(evaluations);
-
-      this.expandSearch(currentNode, selectedEvaluations);
-
-      log.info("Current plan: {}", this.treeMap.getPlan(currentNode.getNodeId()));
-
-      log.info("Evaluation completed: NodeID: {} Selected actions: {} Visited: {}", currentNode.getNodeId(),
-          selectedEvaluations.size(), this.noOfVisitedNodes);
+      if (avaialableActionSize(currentNode) == 0) {
+        log.debug("No available actions for node: {}", currentNode.getNodeId());
+        continue;
+      }
 
       // Check if the utility achieved
       if (this.treeMap.getUtility(currentNode.getNodeId()) >= this.planConfigs.utility()) {
@@ -115,9 +114,27 @@ public class SearchSession {
         return;
       }
 
-      if (this.treeMap.getPlan(currentNode.getNodeId()).size() >= this.planConfigs.maxLength()) {
+      long planLength = this.treeMap.getPlan(currentNode.getNodeId()).size();
+
+      if (planLength >= this.planConfigs.maxLength()) {
+        log.info("Node removed since node {}'s length is larger than the maxLength {} node's plan length: {}",
+            currentNode.getNodeId(),
+            this.planConfigs.maxLength(), planLength);
         continue;
       }
+
+      String response = this.llmApi.query(SearchPrompt.GetSystemPrompt(), currentNode.getPrompt());
+
+      List<ActionEvaluation> evaluations = ActionEvaluationParser.parseActionEvaluations(response);
+
+      List<ActionEvaluation> selectedEvaluations = getSelectedActions(evaluations);
+      log.debug("For node: {} # of available actions: {}", currentNode.getNodeId(), selectedEvaluations.size());
+      this.expandSearch(currentNode, selectedEvaluations);
+
+      log.info("Current plan: {}", this.treeMap.getPlan(currentNode.getNodeId()));
+
+      log.info("Evaluation completed: NodeID: {} Selected actions: {} Visited: {}", currentNode.getNodeId(),
+          selectedEvaluations.size(), this.noOfVisitedNodes);
 
       this.noOfVisitedNodes++;
     }
