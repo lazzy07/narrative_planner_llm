@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-17 15:49:54
-// Date modified: 2026-02-17 15:51:40
+// Date modified: 2026-02-25 03:36:48
 * ------
 */
 
@@ -23,6 +23,17 @@ public class ActionEvaluationParser {
       return MAPPER.readValue(
           json,
           new TypeReference<List<ActionEvaluation>>() {
+          });
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to parse LLM JSON response: " + json, e);
+    }
+  }
+
+  public static List<ActionEvaluationSelect> parseActionEvaluationSelects(String json) {
+    try {
+      return MAPPER.readValue(
+          json,
+          new TypeReference<List<ActionEvaluationSelect>>() {
           });
     } catch (Exception e) {
       throw new RuntimeException("Failed to parse LLM JSON response: " + json, e);

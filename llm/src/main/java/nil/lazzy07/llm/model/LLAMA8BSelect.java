@@ -1,16 +1,11 @@
 /*
- * File name: LLAMA8BApi.java
- * Project:
- * Author: Lasantha M Senanayake
- * Date created: 2026-02-17
- * ------
- *
- * This implementation:
- * - calls a local llama.cpp server (OpenAI-compatible endpoint)
- * - enforces deterministic outputs (temperature=0, top_p=1, fixed seed)
- * - validates your required JSON array schema and auto-repairs if needed
- * - leverages LLMApi caching and only caches the final post-processed JSON
- */
+* File name: LLAMA8BSelect.java
+* Project: 
+* Author: Lasantha M Senanayake
+* Date created: 2026-02-25 02:59:18
+// Date modified: 2026-02-25 03:05:17
+* ------
+*/
 
 package nil.lazzy07.llm.model;
 
@@ -36,15 +31,11 @@ import org.slf4j.LoggerFactory;
  * - calls your local endpoint
  * - extracts assistant content
  * - then extracts a JSON ARRAY from that content even if the model added prose
- * - validates/repairs against the ActionSense schema
+ * - validates/repairs against the ActionSelect schema (actionId + reason)
  *
- * Notes:
- * - We intentionally DO NOT cache junk: postProcessResponse returns a
- * normalized JSON array string.
- * - If the model returns: "Here is ...\n[ {...} ]", we will locate the [ ... ]
- * and parse it.
+ * Cached values are always normalized JSON arrays (compact).
  */
-public class LLAMA8BApi extends LLMApi {
+public class LLAMA8BSelect extends LLMApi {
   private static final Logger log = LoggerFactory.getLogger(LLAMA8BApi.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -60,7 +51,7 @@ public class LLAMA8BApi extends LLMApi {
 
   private volatile HttpClient client;
 
-  public LLAMA8BApi(boolean useCache, String cacheDirectory, String domain) {
+  public LLAMA8BSelect(boolean useCache, String cacheDirectory, String domain) {
     this(
         useCache,
         cacheDirectory,
@@ -72,7 +63,7 @@ public class LLAMA8BApi extends LLMApi {
         2);
   }
 
-  public LLAMA8BApi(boolean useCache,
+  public LLAMA8BSelect(boolean useCache,
       String cacheDirectory,
       String domain,
       URI endpoint,
@@ -95,16 +86,15 @@ public class LLAMA8BApi extends LLMApi {
         .build();
   }
 
-  /** Convenience wrapper for your planner. */
-  public String queryActionSenseJson(String systemPrompt, String userPrompt) {
+  /** Convenience wrapper. */
+  public String queryActionSelectJson(String systemPrompt, String userPrompt) {
     Map<String, Object> params = new LinkedHashMap<>();
     params.put("endpoint", endpoint.toString());
     params.put("temperature", 0.0);
     params.put("top_p", 1.0);
     params.put("seed", seed);
     params.put("max_tokens", maxTokens);
-    params.put("output_schema", "ActionSenseV1");
-
+    params.put("output_schema", "ActionSelectV1");
     return query(systemPrompt, userPrompt, params);
   }
 
@@ -154,48 +144,34 @@ public class LLAMA8BApi extends LLMApi {
       throw new RuntimeException("llama.cpp server error " + resp.statusCode() + ": " + resp.body());
     }
 
-    // Return the assistant content only (not the whole envelope).
     return extractAssistantContent(resp.body());
   }
 
-  /**
-   * Post-process before caching:
-   * 1) Try to extract a JSON array from raw response (even with prose around it)
-   * 2) Validate the schema
-   * 3) If invalid, attempt repair (and re-extract again)
-   *
-   * This guarantees you cache only the final normalized JSON array string.
-   */
   @Override
   protected String postProcessResponse(String rawResponse,
       String systemPrompt,
       String userPrompt,
       Map<String, Object> parameters) {
 
-    // 1) Extract array if possible (handles: prose + array)
     String extracted = tryExtractJsonArrayString(rawResponse);
 
-    // 2) Validate schema
-    if (isValidActionSenseJson(extracted)) {
+    if (isValidActionSelectJson(extracted)) {
       return normalizeJson(extracted);
     }
 
-    // If the raw itself was a clean array but failed validation, try repair;
-    // if raw had prose and we failed to find an array, repair will ask model to
-    // output only JSON.
     String output = rawResponse;
 
     for (int attempt = 1; attempt <= maxRepairAttempts; attempt++) {
-      log.debug("Invalid ActionSense JSON. Attempting repair {}/{}", attempt, maxRepairAttempts);
+      log.debug("Invalid ActionSelect JSON. Attempting repair {}/{}", attempt, maxRepairAttempts);
 
       String repairUserPrompt = "Your previous output did not match the required JSON array schema.\n" +
           "Fix it now.\n" +
           "Rules:\n" +
           "- Return ONLY valid JSON (no markdown, no commentary).\n" +
           "- Must be a JSON array.\n" +
-          "- Each element must include: actionId(number), confidence(float 0..1), isExplained(boolean), explanation(string).\n"
-          +
-          "- explanation must be one short sentence.\n\n" +
+          "- Each element must include: actionId (number), reason (string).\n" +
+          "- reason must be 1 short sentence from the character's perspective (belief-driven).\n" +
+          "- Do not include any other fields.\n\n" +
           "Here is the invalid output to repair:\n" + output;
 
       Map<String, Object> repairParams = new LinkedHashMap<>();
@@ -203,17 +179,14 @@ public class LLAMA8BApi extends LLMApi {
         repairParams.putAll(parameters);
       repairParams.put("repairAttempt", attempt);
 
-      // Re-call model; it may still add prose, so we extract again.
       output = callModel(systemPrompt, userPrompt + "\n\n" + repairUserPrompt, repairParams);
 
       String repairedExtracted = tryExtractJsonArrayString(output);
-      if (isValidActionSenseJson(repairedExtracted)) {
+      if (isValidActionSelectJson(repairedExtracted)) {
         return normalizeJson(repairedExtracted);
       }
     }
 
-    // Best-effort: try extraction one last time and return whatever we got
-    // (normalized if parseable)
     String last = tryExtractJsonArrayString(output);
     if (looksLikeJsonArray(last)) {
       try {
@@ -242,7 +215,6 @@ public class LLAMA8BApi extends LLMApi {
         return msg.get("content").asText();
       }
 
-      // Some servers return text instead
       JsonNode text = choices.get(0).get("text");
       if (text != null && text.isTextual()) {
         return text.asText();
@@ -254,14 +226,6 @@ public class LLAMA8BApi extends LLMApi {
     }
   }
 
-  /**
-   * Attempts to locate and return a JSON array substring from arbitrary text.
-   * Works for common cases:
-   * - "Here is ...\n[ {...} ]"
-   * - "```json\n[...]\n```"
-   *
-   * If no array is found, returns the original trimmed input.
-   */
   private String tryExtractJsonArrayString(String s) {
     if (s == null)
       return "";
@@ -269,17 +233,13 @@ public class LLAMA8BApi extends LLMApi {
     if (text.isEmpty())
       return text;
 
-    // Fast path: already a JSON array
     if (looksLikeJsonArray(text))
       return text;
 
-    // Remove obvious code fences (non-destructive, keeps content)
     text = stripCodeFences(text).trim();
     if (looksLikeJsonArray(text))
       return text;
 
-    // Find first '[' that begins a valid JSON array, using bracket counting while
-    // respecting strings.
     int start = findFirstJsonArrayStart(text);
     if (start < 0)
       return s.trim();
@@ -290,13 +250,11 @@ public class LLAMA8BApi extends LLMApi {
 
     String candidate = text.substring(start, end + 1).trim();
 
-    // Confirm it parses as JSON array (not just brackets)
     try {
       JsonNode node = MAPPER.readTree(candidate);
       if (node != null && node.isArray())
         return candidate;
     } catch (Exception ignore) {
-      // fall through
     }
 
     return s.trim();
@@ -308,36 +266,20 @@ public class LLAMA8BApi extends LLMApi {
   }
 
   private String stripCodeFences(String text) {
-    // naive fence stripping is fine here; we still do real extraction afterwards.
-    // Removes ```json ... ``` and ``` ... ```
     String t = text;
     t = t.replaceAll("(?s)```(?:json|JSON)?\\s*", "");
     t = t.replaceAll("(?s)```\\s*", "");
     return t;
   }
 
-  /**
-   * Find a '[' position that likely starts a JSON array.
-   * We scan and return the first '[' such that the substring from it can be
-   * parsed as JSON array
-   * after we find a matching closing bracket.
-   *
-   * This method returns the first '[' and relies on findMatchingBracketEnd +
-   * parse check.
-   */
   private int findFirstJsonArrayStart(String text) {
     for (int i = 0; i < text.length(); i++) {
-      if (text.charAt(i) == '[') {
+      if (text.charAt(i) == '[')
         return i;
-      }
     }
     return -1;
   }
 
-  /**
-   * Returns index of the matching ']' for the '[' at startIdx,
-   * using bracket depth counting and respecting JSON string quotes/escapes.
-   */
   private int findMatchingBracketEnd(String text, int startIdx) {
     int depth = 0;
     boolean inString = false;
@@ -357,7 +299,6 @@ public class LLAMA8BApi extends LLMApi {
         continue;
       }
 
-      // not in string
       if (c == '"') {
         inString = true;
         continue;
@@ -377,11 +318,10 @@ public class LLAMA8BApi extends LLMApi {
   }
 
   /**
-   * Validates ActionSense schema:
-   * array of objects with actionId(number), confidence(0..1),
-   * isExplained(boolean), explanation(string).
+   * Validates ActionSelect schema:
+   * array of objects with actionId(number), reason(string).
    */
-  private boolean isValidActionSenseJson(String s) {
+  private boolean isValidActionSelectJson(String s) {
     if (s == null)
       return false;
     String trimmed = s.trim();
@@ -403,37 +343,30 @@ public class LLAMA8BApi extends LLMApi {
         return false;
 
       JsonNode actionId = node.get("actionId");
-      JsonNode confidence = node.get("confidence");
-      JsonNode isExplained = node.get("isExplained");
-      JsonNode explanation = node.get("explanation");
+      JsonNode reason = node.get("reason");
 
       if (actionId == null || !actionId.isNumber())
         return false;
-      if (confidence == null || !confidence.isNumber())
+      if (reason == null || !reason.isTextual())
         return false;
 
-      double c = confidence.asDouble();
-      if (Double.isNaN(c) || c < 0.0 || c > 1.0)
+      String r = reason.asText().trim();
+      if (r.isEmpty())
         return false;
 
-      if (isExplained == null || !isExplained.isBoolean())
-        return false;
-      if (explanation == null || !explanation.isTextual())
+      // Guard against "reason": null / "N/A" style junk
+      String lower = r.toLowerCase();
+      if (lower.equals("n/a") || lower.equals("na") || lower.equals("none"))
         return false;
     }
 
     return true;
   }
 
-  /**
-   * Canonicalize JSON output (stable formatting) so cache values are consistent.
-   * This also removes any leading/trailing whitespace/prose if we extracted
-   * properly.
-   */
   private String normalizeJson(String json) {
     try {
       JsonNode node = MAPPER.readTree(json);
-      return MAPPER.writeValueAsString(node); // compact canonical JSON
+      return MAPPER.writeValueAsString(node);
     } catch (JsonProcessingException e) {
       throw new RuntimeException("Failed to normalize JSON", e);
     }

@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:16:07
-// Date modified: 2026-02-20 14:49:08
+// Date modified: 2026-02-25 04:21:32
 * ------
 */
 
@@ -19,10 +19,10 @@ import edu.uky.cs.nil.sabre.Action;
 import edu.uky.cs.nil.sabre.comp.CompiledAction;
 import nil.lazzy07.common.llm.ActionEvaluation;
 import nil.lazzy07.common.llm.ActionEvaluationParser;
+import nil.lazzy07.common.llm.ActionEvaluationSelect;
 import nil.lazzy07.llm.model.LLMApi;
 import nil.lazzy07.llm.prompt.SearchPrompt;
 import nil.lazzy07.planner.config.ConfigFile.Search.Plan;
-import nil.lazzy07.planner.report.SearchResults;
 import nil.lazzy07.planner.search.type.SearchType;
 import nil.lazzy07.planner.search.util.ProgressionTreeMap;
 import nil.lazzy07.planner.search.util.SearchNode;
@@ -65,9 +65,29 @@ public class SearchSession {
     return selectedActions;
   }
 
-  private int availableActionSize(SearchNode node) {
-    ArrayList<CompiledAction> available = this.treeMap.getAvailableActions(node.getNodeId());
-    return available.size();
+  private void expandSearchSelect(SearchNode currentNode, List<ActionEvaluationSelect> selectedEvaluations) {
+    int i = 0;
+    for (ActionEvaluationSelect selected : selectedEvaluations) {
+      ArrayList<CompiledAction> availableActions = this.treeMap.getAvailableActions(currentNode.getNodeId());
+      int actionId = selected.actionId() - 1;
+
+      try {
+        CompiledAction currentAction = availableActions.get(actionId);
+        long nextNodeId = this.treeMap.getNextNode(currentNode.getNodeId(), currentAction);
+
+        SearchNode newNode = new SearchNode(nextNodeId);
+        newNode.setParentNode(currentNode);
+
+        currentNode.addChildNode(newNode);
+        newNode.setConfidence(1.0f - ((float) i / selectedEvaluations.size()));
+
+        this.searchType.addNode(newNode);
+        this.noOfGeneratedNodes++;
+        i++;
+      } catch (IndexOutOfBoundsException e) {
+        continue;
+      }
+    }
   }
 
   private void expandSearch(SearchNode currentNode, List<ActionEvaluation> selectedEvaluations) {
@@ -139,17 +159,13 @@ public class SearchSession {
       String response = this.llmApi.query(SearchPrompt.GetSystemPrompt(), currentNode.getPrompt());
       log.trace("LLM API response: \n{}\n", response);
 
-      List<ActionEvaluation> evaluations = ActionEvaluationParser.parseActionEvaluations(response);
-      log.trace("Evaluations from the LLM: {}", evaluations);
-
-      List<ActionEvaluation> selectedEvaluations = getSelectedActions(evaluations);
-
-      log.trace("Evaluations selected by the LLM: {}", selectedEvaluations);
+      List<ActionEvaluationSelect> selectedEvaluations = ActionEvaluationParser.parseActionEvaluationSelects(response);
+      log.trace("Evaluations from the LLM: {}", selectedEvaluations);
 
       log.debug("For node: {} # of available actions: {}", currentNodeId, selectedEvaluations.size());
-      this.expandSearch(currentNode, selectedEvaluations);
+      this.expandSearchSelect(currentNode, selectedEvaluations);
 
-      log.info("Current plan: {}", this.treeMap.getPlan(currentNodeId));
+      log.info("Current plan:\n{}\n", this.treeMap.getPlan(currentNodeId));
 
       log.info("Evaluation completed: NodeID: {} Selected actions: {} Visited: {}", currentNodeId,
           selectedEvaluations.size(), this.noOfVisitedNodes);

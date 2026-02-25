@@ -1,0 +1,19 @@
+Instructions:
+- For each candidate action, decide whether you endorse it as a strong next step for the actor right now.
+- Use ONLY the actor’s beliefs, goals, and knowledge; do NOT use omniscient information.
+- Prefer goal-directed, consequence-bearing actions that advance the story or improve safety.
+- Reject idle, redundant, low-urgency, or poorly motivated actions by setting "isExplained" = false and lowering confidence.
+- Ensure some actions are rejected unless truly all are strongly justified.
+
+Return ONLY valid JSON in this exact format (one object per action, same order as given):
+
+[
+  {
+    "actionId": number,
+    "confidence": float between 0 and 1,
+    "isExplained": boolean,
+    "explanation": "one short sentence"
+  }
+]
+
+Do not include anything outside the JSON.
