@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:16:07
-// Date modified: 2026-02-25 04:21:32
+// Date modified: 2026-03-02 20:53:02
 * ------
 */
 
@@ -122,11 +122,7 @@ public class SearchSession {
       long currentNodeId = currentNode.getNodeId();
       log.trace("\n**************\nNode selected by the search:  {}", currentNodeId);
 
-      log.trace("Prompt: \n{}\n", currentNode.getPrompt());
-
       ArrayList<CompiledAction> availableActions = currentNode.getAvailableActions();
-
-      log.trace("Available Actions for the node: {}", availableActions);
 
       if (availableActions.size() == 0) {
         log.debug("No available actions for node: {}", currentNodeId);
@@ -157,15 +153,11 @@ public class SearchSession {
       }
 
       String response = this.llmApi.query(SearchPrompt.GetSystemPrompt(), currentNode.getPrompt());
-      log.trace("LLM API response: \n{}\n", response);
 
-      List<ActionEvaluationSelect> selectedEvaluations = ActionEvaluationParser.parseActionEvaluationSelects(response);
-      log.trace("Evaluations from the LLM: {}", selectedEvaluations);
+      List<ActionEvaluationSelect> selectedEvaluations = ActionEvaluationParser
+          .parseActionEvaluationSelectsImproved(response);
 
-      log.debug("For node: {} # of available actions: {}", currentNodeId, selectedEvaluations.size());
       this.expandSearchSelect(currentNode, selectedEvaluations);
-
-      log.info("Current plan:\n{}\n", this.treeMap.getPlan(currentNodeId));
 
       log.info("Evaluation completed: NodeID: {} Selected actions: {} Visited: {}", currentNodeId,
           selectedEvaluations.size(), this.noOfVisitedNodes);

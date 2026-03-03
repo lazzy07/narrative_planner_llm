@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-25 04:02:48
-// Date modified: 2026-02-25 04:32:49
+// Date modified: 2026-02-25 09:09:45
 * ------
 */
 
@@ -17,7 +17,7 @@ import edu.uky.cs.nil.sabre.logic.Expression;
 import edu.uky.cs.nil.sabre.logic.Parameter;
 import edu.uky.cs.nil.sabre.logic.True;
 
-class Bribery extends DomainConverter {
+public class Bribery extends DomainConverter {
   public Bribery(Expression initial, int goal) {
     super(initial, goal);
 

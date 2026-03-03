@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-25 04:33:08
-// Date modified: 2026-02-25 04:36:47
+// Date modified: 2026-02-25 09:10:29
 * ------
 */
 
@@ -17,7 +17,7 @@ import edu.uky.cs.nil.sabre.logic.Expression;
 import edu.uky.cs.nil.sabre.logic.Parameter;
 import edu.uky.cs.nil.sabre.logic.True;
 
-class Aladdin extends DomainConverter {
+public class Aladdin extends DomainConverter {
   public Aladdin(Expression initial, int goal) {
     super(initial, goal);
     agents.put("Aladdin", "Aladdin");
