@@ -1,0 +1,47 @@
+{
+  "search": {
+    // Search configurations
+    "type": {
+      "name": "best-first", // Options: breadth-first
+      "config": {}
+    },
+    "cost": {
+      "type": "plan-length", // Options: none
+      "config": {}
+    },
+    "heuristic": {
+      "type": "rp",
+      "config": {}
+    },
+    "plan": {
+      "max-length": 9, // Max length of the plan until the planner should stop if no solution is found.
+      "utility": 6, // Utility that planner needs to achieve.
+      "max-nodes": 5000
+    }
+  },
+  "llm": {
+    // LLM API Configurations
+    "prompt": {
+      "version": "v1.3",
+      "directory": "prompt-templates/",
+      "explanation": true // Append the explanation (from the LLM) why that action was taken.
+    },
+    "cache": {
+      "enabled": true,
+      "directory": ".llama-8b-cache/"
+    },
+    "model": {
+      "name": "llama-8b",
+      "config": {}
+    }
+  },
+  "domain": {
+    // Domain configurations
+    "name": "jailbreak_revenge",
+    "file": "problems/jailbreak.txt"
+  },
+  "output": {
+    "save": true,
+    "directory": "output/"
+  }
+}
