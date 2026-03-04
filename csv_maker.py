@@ -2,28 +2,19 @@
 # Project: 
 # Author: Lasantha M Senanayake
 # Date created: 2026-03-04 09:38:05
-# Date modified: 2026-03-04 09:40:45
+# Date modified: 2026-03-04 10:24:29
 # ------
 
 #!/usr/bin/env python3
-"""
-Convert planner JSON run files into a single CSV.
-
-Rules:
-- Input files named like: yy-dd-mm_time.json
-- Deduplicate by (domain, search, cost, heuristic).
-  If duplicates exist, keep the newest file (by filename).
-- All top-level JSON fields become CSV columns.
-- "plan" (and any arrays/objects) are JSON-stringified.
-"""
-
 import csv
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, Tuple, Optional
+from typing import Any, Dict, Tuple
 
-Key = Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]
+# Now includes llm too:
+# (domain, search, cost, heuristic, llm)
+Key = Tuple[str, str, str, str, str]
 
 
 def stringify(v: Any) -> Any:
@@ -34,58 +25,69 @@ def stringify(v: Any) -> Any:
     return json.dumps(v, ensure_ascii=False)
 
 
-def main():
-    if len(sys.argv) != 3:
-        print("Usage: python3 json_runs_to_csv.py <input_dir> <output_csv>")
-        sys.exit(1)
+def get_key(data: Dict[str, Any]) -> Key:
+    # Normalize missing values to empty string
+    return (
+        str(data.get("domain") or ""),
+        str(data.get("search") or ""),
+        str(data.get("cost") or ""),
+        str(data.get("heuristic") or ""),
+        str(data.get("llm") or ""),
+    )
 
-    input_dir = Path(sys.argv[1])
-    output_csv = Path(sys.argv[2])
+
+def main() -> int:
+    if len(sys.argv) != 3:
+        print("Usage: python3 csv_maker.py <input_dir> <output_csv>", file=sys.stderr)
+        return 2
+
+    input_dir = Path(sys.argv[1]).expanduser().resolve()
+    output_csv = Path(sys.argv[2]).expanduser().resolve()
 
     files = sorted(input_dir.glob("*.json"), key=lambda p: p.name)
     if not files:
-        print("No .json files found.")
-        sys.exit(1)
+        print(f"No .json files found in {input_dir}", file=sys.stderr)
+        return 2
 
-    runs: Dict[Key, Dict[str, Any]] = {}
-    file_map: Dict[Key, str] = {}
+    # Keep newest by filename: iterate ascending and overwrite older
+    newest_by_key: Dict[Key, Dict[str, Any]] = {}
+    newest_file_by_key: Dict[Key, str] = {}
 
-    # Deduplicate (newest file overwrites older one)
+    all_fields = set()
+
     for path in files:
-        with open(path, "r", encoding="utf-8") as f:
+        with path.open("r", encoding="utf-8") as f:
             data = json.load(f)
 
-        key: Key = (
-            data.get("domain"),
-            data.get("search"),
-            data.get("cost"),
-            data.get("heuristic"),
-        )
-
-        runs[key] = data
-        file_map[key] = path.name
-
-    # Collect all possible fields
-    all_fields = set()
-    for data in runs.values():
+        key = get_key(data)
+        newest_by_key[key] = data
+        newest_file_by_key[key] = path.name
         all_fields.update(data.keys())
+
+    # Write rows in filename order of the kept (newest) files
+    kept_keys = sorted(newest_by_key.keys(), key=lambda k: newest_file_by_key[k])
 
     fieldnames = ["file"] + sorted(all_fields)
 
-    # Write CSV
-    with open(output_csv, "w", encoding="utf-8", newline="") as f:
+    output_csv.parent.mkdir(parents=True, exist_ok=True)
+    with output_csv.open("w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
 
-        for key in sorted(runs.keys()):
-            row = {"file": file_map[key]}
-            data = runs[key]
+        for key in kept_keys:
+            data = newest_by_key[key]
+            row = {"file": newest_file_by_key[key]}
             for field in all_fields:
                 row[field] = stringify(data.get(field))
             writer.writerow(row)
 
-    print(f"Wrote {len(runs)} rows to {output_csv}")
+    removed = len(files) - len(kept_keys)
+    print(
+        f"Wrote {len(kept_keys)} rows to {output_csv} "
+        f"(from {len(files)} files; {removed} duplicates removed)."
+    )
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
