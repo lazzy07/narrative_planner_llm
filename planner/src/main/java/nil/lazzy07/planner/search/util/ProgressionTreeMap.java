@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:51:18
-// Date modified: 2026-02-11 00:06:16
+// Date modified: 2026-03-04 01:14:00
 * ------
 */
 
@@ -85,6 +85,10 @@ public class ProgressionTreeMap implements GenericTreeMap {
     for (Fluent fluent : tree.problem.fluents)
       state.add(new Assignment(fluent, tree.getValue(node, fluent)));
     return state;
+  }
+
+  public State getStateView(long node) {
+    return (Fluent fluent) -> tree.getValue(node, fluent);
   }
 
   public Plan<Action> getPlan(long node) {

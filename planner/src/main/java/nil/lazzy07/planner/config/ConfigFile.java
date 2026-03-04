@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 20:56:55
-// Date modified: 2026-02-03 09:24:55
+// Date modified: 2026-03-03 22:49:02
 * ------
 */
 
@@ -21,13 +21,17 @@ public record ConfigFile(Domain domain, Search search, LLM llm, Output output) {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
-  public record Search(Type type, Cost cost, Plan plan) {
+  public record Search(Type type, Cost cost, Heuristic heuristic, Plan plan) {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Type(String name, Map<String, Object> config) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Cost(String type, Map<String, Object> config) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record Heuristic(String type, Map<String, Object> config) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

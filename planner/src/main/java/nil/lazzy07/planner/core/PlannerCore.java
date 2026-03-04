@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:01:17
-// Date modified: 2026-02-20 12:13:06
+// Date modified: 2026-03-04 01:21:22
 * ------
 */
 
@@ -26,11 +26,15 @@ import nil.lazzy07.planner.config.ConfigFile;
 import nil.lazzy07.planner.config.ConfigFile.Search;
 import nil.lazzy07.planner.config.ConfigFile.LLM.Prompt;
 import nil.lazzy07.planner.config.ConfigFile.Search.Cost;
+import nil.lazzy07.planner.config.ConfigFile.Search.Heuristic;
 import nil.lazzy07.planner.config.ConfigFile.Search.Type;
+import nil.lazzy07.planner.report.JsonUtils;
 import nil.lazzy07.planner.report.SearchResults;
 import nil.lazzy07.planner.search.SearchSession;
 import nil.lazzy07.planner.search.cost.CostType;
 import nil.lazzy07.planner.search.cost.CostTypeFactory;
+import nil.lazzy07.planner.search.heuristic.HeuristicFactory;
+import nil.lazzy07.planner.search.heuristic.HeuristicType;
 import nil.lazzy07.planner.search.type.SearchType;
 import nil.lazzy07.planner.search.type.SearchTypeFactory;
 import nil.lazzy07.planner.search.util.ProgressionTreeMap;
@@ -41,6 +45,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.nio.file.Path;
 
 public class PlannerCore {
   private static final Logger log = LoggerFactory.getLogger(PlannerCore.class);
@@ -83,9 +88,11 @@ public class PlannerCore {
     Search searchConfigs = this.configs.search();
     Type searchTypeConfigs = searchConfigs.type();
     Cost costTypeConfigs = searchConfigs.cost();
+    Heuristic heuristicConfigs = searchConfigs.heuristic();
 
     CostType costType = CostTypeFactory.CreateCostType(costTypeConfigs.type());
-    SearchType searchType = SearchTypeFactory.CreateSearchType(searchTypeConfigs.name(), costType);
+    HeuristicType heuristicType = HeuristicFactory.CreateHeuristic(heuristicConfigs.type(), this.progressionTreeMap);
+    SearchType searchType = SearchTypeFactory.CreateSearchType(searchTypeConfigs.name(), costType, heuristicType);
 
     DomainConverter domainConverter = DomainConverterFactory.GetDomainConverter(this.configs.domain().name(),
         this.compiledProblem.initial, searchConfigs.plan().utility());
@@ -104,7 +111,8 @@ public class PlannerCore {
 
     SearchResults results = new SearchResults(configs, searchSession.getNoOfVisitedNodes(),
         searchSession.getNoOfGeneratedNodes(), plan);
-    log.debug("Planner results: ", results.toJsonString());
+
+    JsonUtils.saveToJson(Path.of("output"), results.toJsonString());
   }
 
   private void initSession() {
@@ -113,6 +121,7 @@ public class PlannerCore {
     try {
       session.setProblem(new File(this.configs.domain().file()));
       this.search = (ProgressionSearch) session.getSearch();
+
       log.trace("Session created and problem set to: {}", domain.name());
     } catch (IOException e) {
       log.error("Error reading the sabre problem file: {}", domain.file());

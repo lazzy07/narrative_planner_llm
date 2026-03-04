@@ -3,3 +3,4 @@
 /converter-directory/**
 /.llama-8b-cache
 /.openai-cache
+/output

@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-20 09:53:17
-// Date modified: 2026-02-20 11:50:52
+// Date modified: 2026-03-04 01:27:07
 * ------
 */
 package nil.lazzy07.planner.report;
@@ -71,6 +71,8 @@ public class SearchResults {
     node.put("search", configs.search().type().name());
     node.put("cost", configs.search().cost().type());
 
+    node.put("heuristic", configs.search().heuristic().type());
+
     node.put("llm", configs.llm().model().name());
     node.put("useCache", configs.llm().cache().enabled());
 
@@ -83,7 +85,7 @@ public class SearchResults {
     }
 
     try {
-      return objMapper.writeValueAsString(node);
+      return objMapper.writerWithDefaultPrettyPrinter().writeValueAsString(node);
     } catch (JsonProcessingException e) {
       throw new RuntimeException("Cannot generate the final report: JSON parse error");
     }

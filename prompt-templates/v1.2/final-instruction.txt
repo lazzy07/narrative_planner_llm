@@ -36,7 +36,7 @@ OUTPUT FORMAT (STRICT):
     - "reason": one short sentence explaining why the action makes sense FROM THE ACTION TAKER’S BELIEF PERSPECTIVE
 - Do NOT include any other fields.
 - Do NOT include rejected actions.
-- If no action is appropriate, return an empty array: []
+- If no action is appropriate, return an empty object: {}
 
 JSON VALIDITY (MANDATORY):
 - Output must be valid JSON.

@@ -6,7 +6,11 @@
       "config": {},
     },
     "cost": {
-      "type": "action-cost", // Options: none
+      "type": "plan-length", // Options: none
+      "config": {},
+    },
+    "heuristic": {
+      "type": "rp",
       "config": {},
     },
     "plan": {

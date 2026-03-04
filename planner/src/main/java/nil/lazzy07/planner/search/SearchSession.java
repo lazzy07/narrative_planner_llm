@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:16:07
-// Date modified: 2026-03-02 20:53:02
+// Date modified: 2026-03-04 00:37:58
 * ------
 */
 
@@ -120,7 +120,6 @@ public class SearchSession {
       // Get the next node
       SearchNode currentNode = this.searchType.getNextNode();
       long currentNodeId = currentNode.getNodeId();
-      log.trace("\n**************\nNode selected by the search:  {}", currentNodeId);
 
       ArrayList<CompiledAction> availableActions = currentNode.getAvailableActions();
 
@@ -143,7 +142,6 @@ public class SearchSession {
       }
 
       long planLength = this.treeMap.getPlan(currentNodeId).size();
-      log.trace("Current plan length: {}", planLength);
 
       if (planLength >= this.planConfigs.maxLength()) {
         log.info("Node removed since node {}'s length is larger than the maxLength {} node's plan length: {}",

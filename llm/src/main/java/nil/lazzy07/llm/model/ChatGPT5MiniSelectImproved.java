@@ -3,12 +3,13 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-03-02 20:39:46
-// Date modified: 2026-03-02 23:10:51
+// Date modified: 2026-03-02 23:47:52
 * ------
 */
 
 package nil.lazzy07.llm.model;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -22,13 +23,37 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * OpenAI Responses client (gpt-5-mini) that:
+ * - calls https://api.openai.com/v1/responses
+ * - extracts output_text
+ * - then extracts a JSON OBJECT from that text even if the model added prose
+ * - validates/repairs into ActionSelectMap format:
+ *
+ * { "12": "reason", "44": "reason" }
+ *
+ * Notes:
+ * - Does NOT use json_schema (no schema limitations / 400 errors).
+ * - Uses text.format = json_object to reduce prose, but still extracts/repairs
+ * defensively.
+ * - Cached values are normalized JSON objects (compact).
+ */
 public class ChatGPT5MiniSelectImproved extends LLMApi {
+  private static final Logger log = LoggerFactory.getLogger(ChatGPT5MiniSelectImproved.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private final URI endpoint;
   private final Duration timeout;
   private final String apiKey;
+
+  // retry defaults (transport/server throttling)
   private final int maxAttempts;
+
+  // repair defaults (bad JSON / wrong shape)
+  private final int maxRepairAttempts;
 
   private volatile HttpClient client;
 
@@ -40,7 +65,8 @@ public class ChatGPT5MiniSelectImproved extends LLMApi {
         URI.create("https://api.openai.com/v1/responses"),
         Duration.ofSeconds(60),
         System.getenv("OPENAI_API_KEY"),
-        3);
+        3,
+        2);
   }
 
   public ChatGPT5MiniSelectImproved(
@@ -50,12 +76,14 @@ public class ChatGPT5MiniSelectImproved extends LLMApi {
       URI endpoint,
       Duration timeout,
       String apiKey,
-      int maxAttempts) {
+      int maxAttempts,
+      int maxRepairAttempts) {
     super("GPT-5-MINI", useCache, cacheDirectory, domain);
     this.endpoint = endpoint;
     this.timeout = timeout;
     this.apiKey = apiKey;
     this.maxAttempts = Math.max(1, maxAttempts);
+    this.maxRepairAttempts = Math.max(0, maxRepairAttempts);
   }
 
   @Override
@@ -69,16 +97,7 @@ public class ChatGPT5MiniSelectImproved extends LLMApi {
         .build();
   }
 
-  /**
-   * Planner convenience wrapper.
-   *
-   * Output shape:
-   * {
-   * "12": "reason",
-   * "44": "reason"
-   * }
-   * (only selected actions included)
-   */
+  /** Planner convenience wrapper. Returns normalized JSON object string. */
   public String queryActionSelectJson(String systemPrompt, String userPrompt) {
     Map<String, Object> params = new LinkedHashMap<>();
     params.put("output_schema", "ActionSelectV1");
@@ -86,13 +105,9 @@ public class ChatGPT5MiniSelectImproved extends LLMApi {
   }
 
   @Override
-  protected String callModel(
-      String systemPrompt,
-      String userPrompt,
-      Map<String, Object> parameters) {
+  protected String callModel(String systemPrompt, String userPrompt, Map<String, Object> parameters) {
 
     Map<String, Object> body = new LinkedHashMap<>();
-
     body.put("model", "gpt-5-mini");
 
     body.put(
@@ -102,16 +117,8 @@ public class ChatGPT5MiniSelectImproved extends LLMApi {
             Map.of("role", "user", "content", userPrompt)
         });
 
-    // Strict JSON schema (top-level must be object)
-    body.put(
-        "text",
-        Map.of(
-            "format",
-            Map.of(
-                "type", "json_schema",
-                "name", "action_select_map",
-                "strict", true,
-                "schema", buildActionSelectMapSchema())));
+    // JSON mode (NOT json_schema). This avoids schema subset limitations.
+    body.put("text", Map.of("format", Map.of("type", "json_object")));
 
     if (parameters != null) {
       Object maxOut = parameters.get("max_output_tokens");
@@ -148,44 +155,111 @@ public class ChatGPT5MiniSelectImproved extends LLMApi {
       throw new RuntimeException("OpenAI error " + resp.statusCode() + ": " + resp.body());
     }
 
-    String raw = extractOutputText(resp.body()).trim();
+    // Return raw output_text (may still contain minor extra text in edge cases).
+    return extractOutputText(resp.body()).trim();
+  }
 
-    // Validate it is an object and (optionally) normalize formatting.
-    return validateAndNormalizeActionSelectMap(raw);
+  @Override
+  protected String postProcessResponse(
+      String rawResponse,
+      String systemPrompt,
+      String userPrompt,
+      Map<String, Object> parameters) {
+
+    String extracted = tryExtractJsonObjectString(rawResponse);
+
+    if (isValidActionSelectMapJson(extracted)) {
+      return normalizeJson(extracted);
+    }
+
+    String output = rawResponse;
+
+    for (int attempt = 1; attempt <= maxRepairAttempts; attempt++) {
+      log.debug("Invalid ActionSelect MAP JSON. Attempting repair {}/{}", attempt, maxRepairAttempts);
+
+      String repairUserPrompt = "Your previous output did not match the required JSON object schema.\n"
+          + "Fix it now.\n"
+          + "Rules:\n"
+          + "- Return ONLY valid JSON (no markdown, no commentary).\n"
+          + "- Must be a JSON object mapping numeric actionId strings to reason strings.\n"
+          + "- Example: {\"12\":\"reason\"}\n"
+          + "- Include ONLY selected actions; omit rejected actions.\n"
+          + "- Select at most 5 actions.\n"
+          + "- Do NOT invent new facts or beliefs; use ONLY the provided state, beliefs, and plan prefix.\n"
+          + "- Do NOT repeat the same action unless absolutely necessary.\n\n"
+          + "Invalid output:\n"
+          + output;
+
+      Map<String, Object> repairParams = new LinkedHashMap<>();
+      if (parameters != null)
+        repairParams.putAll(parameters);
+      repairParams.put("repairAttempt", attempt);
+
+      // Re-call the model; callModel returns output_text
+      output = callModel(systemPrompt, userPrompt + "\n\n" + repairUserPrompt, repairParams);
+
+      String repairedExtracted = tryExtractJsonObjectString(output);
+      if (isValidActionSelectMapJson(repairedExtracted)) {
+        return normalizeJson(repairedExtracted);
+      }
+    }
+
+    // Last resort: if it looks like an object, try normalizing it; otherwise return
+    // extracted/raw.
+    String last = tryExtractJsonObjectString(output);
+    if (looksLikeJsonObject(last)) {
+      try {
+        if (isValidActionSelectMapJson(last))
+          return normalizeJson(last);
+      } catch (RuntimeException ignore) {
+        // fall through
+      }
+    }
+
+    return extracted.trim();
   }
 
   // ================================
-  // Schema
+  // Responses parsing
   // ================================
 
-  /*
-   * Output schema (OpenAI-supported subset):
-   * {
-   * "<actionId>": "<reason>",
-   * ...
-   * }
-   *
-   * We cannot enforce digit-only keys in schema (propertyNames is not permitted),
-   * so we enforce it in Java validation after extraction.
-   */
-  private Map<String, Object> buildActionSelectMapSchema() {
-    Map<String, Object> schema = new LinkedHashMap<>();
-    schema.put("type", "object");
+  private String extractOutputText(String responseJson) {
+    try {
+      JsonNode root = MAPPER.readTree(responseJson);
+      JsonNode output = root.get("output");
 
-    // REQUIRED by OpenAI schema subset (even if empty)
-    schema.put("properties", new LinkedHashMap<String, Object>());
+      if (output == null || !output.isArray()) {
+        throw new RuntimeException("Unexpected Responses shape: missing output[]");
+      }
 
-    // Allow dynamic keys, enforce value type
-    schema.put("additionalProperties", Map.of("type", "string"));
+      StringBuilder sb = new StringBuilder();
 
-    // Optional (but good): disallow null
-    // schema.put("additionalProperties", Map.of("type", "string"));
+      for (JsonNode item : output) {
+        JsonNode content = item.get("content");
+        if (content == null || !content.isArray())
+          continue;
 
-    return schema;
+        for (JsonNode c : content) {
+          if ("output_text".equals(c.path("type").asText(""))) {
+            sb.append(c.path("text").asText(""));
+          }
+        }
+      }
+
+      String text = sb.toString();
+      if (text.isBlank()) {
+        throw new RuntimeException("No output_text found.");
+      }
+
+      return text;
+
+    } catch (Exception e) {
+      throw new RuntimeException("Failed parsing Responses JSON: " + responseJson, e);
+    }
   }
 
   // ================================
-  // Response parsing
+  // Retry/backoff
   // ================================
 
   private HttpResponse<String> sendWithRetries(HttpRequest req) {
@@ -230,68 +304,166 @@ public class ChatGPT5MiniSelectImproved extends LLMApi {
     }
   }
 
-  private String extractOutputText(String responseJson) {
-    try {
-      JsonNode root = MAPPER.readTree(responseJson);
-      JsonNode output = root.get("output");
+  // ================================
+  // Extraction (LLAMA-style)
+  // ================================
 
-      if (output == null || !output.isArray()) {
-        throw new RuntimeException("Unexpected Responses shape: missing output[]");
-      }
-
-      StringBuilder sb = new StringBuilder();
-
-      for (JsonNode item : output) {
-        JsonNode content = item.get("content");
-        if (content == null || !content.isArray())
-          continue;
-
-        for (JsonNode c : content) {
-          if ("output_text".equals(c.path("type").asText(""))) {
-            sb.append(c.path("text").asText(""));
-          }
-        }
-      }
-
-      String text = sb.toString();
-      if (text.isBlank()) {
-        throw new RuntimeException("No output_text found.");
-      }
-
+  private String tryExtractJsonObjectString(String s) {
+    if (s == null)
+      return "";
+    String text = s.trim();
+    if (text.isEmpty())
       return text;
 
-    } catch (Exception e) {
-      throw new RuntimeException("Failed parsing Responses JSON: " + responseJson, e);
+    if (looksLikeJsonObject(text))
+      return text;
+
+    text = stripCodeFences(text).trim();
+    if (looksLikeJsonObject(text))
+      return text;
+
+    int start = findFirstJsonObjectStart(text);
+    if (start < 0)
+      return s.trim();
+
+    int end = findMatchingBraceEnd(text, start);
+    if (end < 0)
+      return s.trim();
+
+    String candidate = text.substring(start, end + 1).trim();
+
+    try {
+      JsonNode node = MAPPER.readTree(candidate);
+      if (node != null && node.isObject())
+        return candidate;
+    } catch (Exception ignore) {
     }
+
+    return s.trim();
   }
 
-  private String validateAndNormalizeActionSelectMap(String raw) {
-    try {
-      JsonNode node = MAPPER.readTree(raw);
-      if (!node.isObject()) {
-        throw new RuntimeException("Expected JSON object (actionId->reason map). Got: " + raw);
+  private boolean looksLikeJsonObject(String s) {
+    String t = s.trim();
+    return t.startsWith("{") && t.endsWith("}");
+  }
+
+  private String stripCodeFences(String text) {
+    String t = text;
+    t = t.replaceAll("(?s)```(?:json|JSON)?\\s*", "");
+    t = t.replaceAll("(?s)```\\s*", "");
+    return t;
+  }
+
+  private int findFirstJsonObjectStart(String text) {
+    for (int i = 0; i < text.length(); i++) {
+      if (text.charAt(i) == '{')
+        return i;
+    }
+    return -1;
+  }
+
+  private int findMatchingBraceEnd(String text, int startIdx) {
+    int depth = 0;
+    boolean inString = false;
+    boolean escape = false;
+
+    for (int i = startIdx; i < text.length(); i++) {
+      char c = text.charAt(i);
+
+      if (inString) {
+        if (escape) {
+          escape = false;
+        } else if (c == '\\') {
+          escape = true;
+        } else if (c == '"') {
+          inString = false;
+        }
+        continue;
       }
 
-      node.fields().forEachRemaining(e -> {
-        String k = e.getKey();
-        if (!k.matches("^[0-9]+$")) {
-          throw new RuntimeException("Invalid action id key: '" + k + "'. Raw: " + raw);
-        }
-        if (!e.getValue().isTextual()) {
-          throw new RuntimeException("Reason must be a string for key '" + k + "'. Raw: " + raw);
-        }
-        String r = e.getValue().asText().trim();
-        if (r.isEmpty()) {
-          throw new RuntimeException("Empty reason for key '" + k + "'. Raw: " + raw);
-        }
-      });
+      if (c == '"') {
+        inString = true;
+        continue;
+      }
 
-      return MAPPER.writeValueAsString(node);
+      if (c == '{') {
+        depth++;
+      } else if (c == '}') {
+        depth--;
+        if (depth == 0)
+          return i;
+        if (depth < 0)
+          return -1;
+      }
+    }
 
-    } catch (RuntimeException re) {
-      throw re;
+    return -1;
+  }
+
+  // ================================
+  // Validation + normalization
+  // ================================
+
+  /**
+   * Validates ActionSelectMap schema:
+   * JSON object with digit-only keys and string values (reasons).
+   *
+   * Example:
+   * { "12": "reason", "44": "reason" }
+   */
+  private boolean isValidActionSelectMapJson(String s) {
+    if (s == null)
+      return false;
+    String trimmed = s.trim();
+    if (trimmed.isEmpty())
+      return false;
+
+    JsonNode root;
+    try {
+      root = MAPPER.readTree(trimmed);
     } catch (Exception e) {
-      throw new RuntimeException("Failed to validate/normalize action select map: " + raw, e);
+      return false;
+    }
+
+    if (!root.isObject())
+      return false;
+
+    // Enforce "select at most 5 actions"
+    if (root.size() > 5)
+      return false;
+
+    var fields = root.fields();
+    while (fields.hasNext()) {
+      var e = fields.next();
+      String key = e.getKey();
+      JsonNode val = e.getValue();
+
+      // numeric keys only
+      if (key == null || !key.matches("^[0-9]+$"))
+        return false;
+
+      if (val == null || !val.isTextual())
+        return false;
+
+      String r = val.asText().trim();
+      if (r.isEmpty())
+        return false;
+
+      // guard against junk
+      String lower = r.toLowerCase();
+      if (lower.equals("n/a") || lower.equals("na") || lower.equals("none"))
+        return false;
+    }
+
+    return true;
+  }
+
+  private String normalizeJson(String json) {
+    try {
+      JsonNode node = MAPPER.readTree(json);
+      return MAPPER.writeValueAsString(node);
+    } catch (JsonProcessingException e) {
+      throw new RuntimeException("Failed to normalize JSON", e);
     }
   }
 }

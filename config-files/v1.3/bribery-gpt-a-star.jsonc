@@ -14,7 +14,7 @@
       "config": {},
     },
     "plan": {
-      "max-length": 8, // Max length of the plan untill the planner should stop, if planner did not find a solution.
+      "max-length": 7, // Max length of the plan untill the planner should stop, if planner did not find a solution.
       "utility": 1, // Utility that planner needs to achieve.
       "max-nodes": 5000,
     },
@@ -37,8 +37,8 @@
   },
   "domain": {
     // Domain configurations
-    "name": "deerhunter",
-    "file": "problems/deerhunter.txt",
+    "name": "bribery",
+    "file": "problems/bribery.txt",
   },
   "output": {
     "save": true,
