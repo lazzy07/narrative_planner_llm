@@ -1,10 +1,3 @@
-# File name: run-batch.sh
-# Project:
-# Author: Lasantha M Senanayake
-# Date created: 2026-03-04 03:23:14
-# Date modified: 2026-03-04 03:23:19
-# ------
-
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -21,6 +14,9 @@ CHATGPT_PARALLEL=3
 LOG_DIR="planner-logs/$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$LOG_DIR"
 
+# Export vars used inside xargs subshells
+export LOG_LEVEL RUNNER LOG_DIR
+
 require() {
   command -v "$1" >/dev/null 2>&1 || {
     echo "Missing dependency: $1" >&2
@@ -31,22 +27,19 @@ require() {
 require jq
 require xargs
 
-# Extract max-length from jsonc by letting jq handle it.
-# jq doesn't support comments directly, but it WILL parse if we strip // comments safely.
-# We'll do a simple line-based removal of //... (good enough for your config style).
+# jq doesn't support comments; strip // comments first (works for your jsonc style)
 get_max_len() {
   local f="$1"
-  # Remove // comments, then parse
   sed -E 's#//.*$##' "$f" | jq -r '.search.plan["max-length"]'
 }
 
-# Build "maxlen<TAB>filepath" list and sort by maxlen asc
 sorted_configs() {
   local dir="$1"
   find "$dir" -maxdepth 1 -type f -name "*.jsonc" -print0 |
     while IFS= read -r -d '' f; do
+      local ml
       ml="$(get_max_len "$f")"
-      if [[ "$ml" == "null" || -z "$ml" ]]; then
+      if [[ -z "$ml" || "$ml" == "null" ]]; then
         echo "WARN: Could not read max-length for $f, skipping" >&2
         continue
       fi
@@ -57,9 +50,9 @@ sorted_configs() {
 
 run_one() {
   local cfg="$1"
-  local base
+  local base out
   base="$(basename "$cfg" .jsonc)"
-  local out="$LOG_DIR/${base}.log"
+  out="$LOG_DIR/${base}.log"
 
   echo "==> START $(date '+%F %T') | $cfg | log=$out"
   set +e
@@ -69,8 +62,8 @@ run_one() {
   echo "==> DONE  $(date '+%F %T') | $cfg | exit=$code | log=$out"
   return $code
 }
+export -f run_one
 
-# Run a list with limited parallelism
 run_pool() {
   local pool_name="$1"
   local dir="$2"
@@ -78,26 +71,17 @@ run_pool() {
 
   echo "---- Pool: $pool_name | dir=$dir | parallel=$parallel ----"
 
-  # sorted list -> just the filepaths
   sorted_configs "$dir" | cut -f2 |
-    xargs -I{} -P "$parallel" bash -lc '
-        set -euo pipefail
-        cfg="$1"
-        '"$(declare -f run_one)"'
-        run_one "$cfg"
-      ' _ {}
+    xargs -r -I{} -P "$parallel" bash -lc 'run_one "$1"' _ {}
 }
 
-# Kick both pools concurrently
-# - llama: 1 at a time
-# - chatgpt: 3 at a time
+# Run both pools concurrently
 run_pool "llama-8b" "$LLAMA_DIR" "$LLAMA_PARALLEL" &
 PID_LLAMA=$!
 
 run_pool "chatgpt-5-mini" "$CHATGPT_DIR" "$CHATGPT_PARALLEL" &
 PID_CHATGPT=$!
 
-# Wait for both pools
 FAIL=0
 wait "$PID_LLAMA" || FAIL=1
 wait "$PID_CHATGPT" || FAIL=1

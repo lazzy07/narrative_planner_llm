@@ -4,3 +4,4 @@
 /.llama-8b-cache
 /.openai-cache
 /output
+/planner-logs
