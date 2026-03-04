@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-20 18:02:16
-// Date modified: 2026-02-20 18:11:39
+// Date modified: 2026-03-04 00:39:56
 * ------
 */
 
@@ -21,7 +21,7 @@ public class PlanCost extends CostType {
     if (node == null) {
       return currentCost;
     } else {
-      return nodeCostRecursive(node.getParentNode(), currentCost + (1.0f - node.getConfidence()));
+      return nodeCostRecursive(node.getParentNode(), currentCost + (node.getConfidence()));
     }
   }
 }

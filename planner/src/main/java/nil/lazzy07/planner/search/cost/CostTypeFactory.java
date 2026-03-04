@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-04 01:30:19
-// Date modified: 2026-02-20 18:11:58
+// Date modified: 2026-03-04 02:00:33
 * ------
 */
 
@@ -16,6 +16,8 @@ public class CostTypeFactory {
         return new ActionCost();
       case "plan-cost":
         return new PlanCost();
+      case "plan-length":
+        return new PlanLengthCost();
       default:
         return null;
     }
