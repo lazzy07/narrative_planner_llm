@@ -5,3 +5,6 @@
 /.openai-cache
 /output
 /planner-logs
+/result
+/batch_execute
+/report
