@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:01:17
-// Date modified: 2026-03-04 01:21:22
+// Date modified: 2026-03-04 14:40:44
 * ------
 */
 
@@ -104,7 +104,7 @@ public class PlannerCore {
     Prompt promptConfigs = this.configs.llm().prompt();
     SearchPrompt.Init(promptConfigs.directory(), promptConfigs.version(), domainConverter);
 
-    SearchSession searchSession = new SearchSession(searchConfigs.plan(), this.progressionTreeMap, searchType, api);
+    SearchSession searchSession = new SearchSession(this.configs, this.progressionTreeMap, searchType, api);
     searchSession.initSearch();
 
     Plan<Action> plan = searchSession.startSearch();
@@ -112,7 +112,7 @@ public class PlannerCore {
     SearchResults results = new SearchResults(configs, searchSession.getNoOfVisitedNodes(),
         searchSession.getNoOfGeneratedNodes(), plan);
 
-    JsonUtils.saveToJson(Path.of("output"), results.toJsonString());
+    JsonUtils.saveToJson(Path.of("result"), results.toJsonString());
   }
 
   private void initSession() {

@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-20 09:53:17
-// Date modified: 2026-03-04 01:27:07
+// Date modified: 2026-03-05 13:24:06
 * ------
 */
 package nil.lazzy07.planner.report;
@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import edu.uky.cs.nil.sabre.Action;
 import edu.uky.cs.nil.sabre.Plan;
+import nil.lazzy07.common.datetime.DateTimeGenerator;
 import nil.lazzy07.planner.config.ConfigFile;
 
 public class SearchResults {
@@ -79,6 +80,9 @@ public class SearchResults {
     node.put("promptVersion", configs.llm().prompt().version());
 
     node.put("planFound", this.planFound);
+    node.put("saveNodeResults", this.configs.output().save());
+    node.put("nodeResultDirectory", this.configs.output().directory() + this.configs.domain().name() + "/"
+        + DateTimeGenerator.GetTimeStamp() + "/" + this.configs.llm().model().name() + "/");
 
     if (planFound) {
       node.putPOJO("plan", planToStr());
