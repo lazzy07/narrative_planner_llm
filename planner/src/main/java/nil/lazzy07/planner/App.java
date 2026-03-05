@@ -4,6 +4,7 @@ import nil.lazzy07.planner.core.PlannerCore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import nil.lazzy07.common.datetime.DateTimeGenerator;
 import nil.lazzy07.planner.cli.ArgumentHandler;
 import nil.lazzy07.planner.cli.ParsedCLIArguments;
 import nil.lazzy07.planner.config.ConfigFile;
@@ -31,7 +32,7 @@ public class App {
     }
 
     log.info("Current planner configurations: {}", configurations);
-
+    DateTimeGenerator.InitTime();
     PlannerCore plannerCore = new PlannerCore(configurations);
     plannerCore.runSearchSession();
   }
