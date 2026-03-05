@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 23:48:40
-// Date modified: 2026-03-04 00:40:09
+// Date modified: 2026-03-04 13:52:21
 * ------
 */
 
@@ -11,6 +11,10 @@ package nil.lazzy07.planner.search.util;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import edu.uky.cs.nil.sabre.Action;
 import edu.uky.cs.nil.sabre.Plan;
@@ -26,6 +30,7 @@ public class SearchNode implements GenericSearchNode {
   private List<GenericSearchNode> childNodes;
   private String prompt;
   private ArrayList<CompiledAction> availableActions;
+  private String llmResponse;
 
   private float confidence;
   private String explaination;
@@ -90,5 +95,42 @@ public class SearchNode implements GenericSearchNode {
 
   public ArrayList<CompiledAction> getAvailableActions() {
     return availableActions;
+  }
+
+  public void setLLMResponse(String llmResponse) {
+    this.llmResponse = llmResponse;
+  }
+
+  public String getLLMResponse() {
+    return this.llmResponse;
+  }
+
+  private List<String> availableActionsToStr() {
+    List<String> planStr = new ArrayList<>();
+
+    for (Action action : this.availableActions) {
+      planStr.add(action.toString());
+    }
+
+    return planStr;
+  }
+
+  public String toJsonString() {
+    ObjectMapper objMapper = new ObjectMapper();
+    ObjectNode node = objMapper.createObjectNode();
+
+    node.put("nodeId", this.nodeId);
+    node.put("prompt", this.prompt);
+    node.putPOJO("availableActions", availableActionsToStr());
+
+    if (this.llmResponse != null) {
+      node.put("llmResponse", this.llmResponse);
+    }
+
+    try {
+      return objMapper.writerWithDefaultPrettyPrinter().writeValueAsString(node);
+    } catch (JsonProcessingException e) {
+      throw new RuntimeException("Cannot generate the final report: JSON parse error");
+    }
   }
 }
