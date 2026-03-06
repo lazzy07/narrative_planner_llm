@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:01:17
-// Date modified: 2026-03-04 14:40:44
+// Date modified: 2026-03-05 22:35:10
 * ------
 */
 
@@ -17,6 +17,7 @@ import edu.uky.cs.nil.sabre.io.ParseException;
 import edu.uky.cs.nil.sabre.prog.ProgressionSearch;
 import edu.uky.cs.nil.sabre.ptree.ProgressionTree;
 import edu.uky.cs.nil.sabre.ptree.ProgressionTreeSpace;
+import nil.lazzy07.common.datetime.DateTimeGenerator;
 import nil.lazzy07.domain.DomainConverterFactory;
 import nil.lazzy07.domain.converters.DomainConverter;
 import nil.lazzy07.llm.LLMApiFactory;
@@ -112,7 +113,10 @@ public class PlannerCore {
     SearchResults results = new SearchResults(configs, searchSession.getNoOfVisitedNodes(),
         searchSession.getNoOfGeneratedNodes(), plan);
 
-    JsonUtils.saveToJson(Path.of("result"), results.toJsonString());
+    JsonUtils.saveToJson(
+        DateTimeGenerator.GetTimeStamp() + "_" + configs.domain().name() + "_" + configs.llm().model().name() + "_"
+            + ".json",
+        Path.of("result"), results.toJsonString());
   }
 
   private void initSession() {
