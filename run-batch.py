@@ -15,21 +15,38 @@ from typing import Any, Dict, List, Optional, Tuple
 import subprocess
 
 # -----------------------------
-# Config (edit to match your repo)
+# Config
 # -----------------------------
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "TRACE")
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 RUNNER = (SCRIPT_DIR / "run-planner.sh").resolve()
-LLAMA_DIR = (SCRIPT_DIR / "config-files/a-star/llama-8b").resolve()
-CHATGPT_DIR = (SCRIPT_DIR / "config-files/a-star/chatgpt-5-mini").resolve()
+LLAMA_DIR = (SCRIPT_DIR / "config-files/v1.4/a-star/llama-8b").resolve()
+CHATGPT_DIR = (SCRIPT_DIR / "config-files/v1.4/a-star/chatgpt-5-mini").resolve()
 LOGS_ROOT = (SCRIPT_DIR / "planner-logs").resolve()
 SUMMARY_DIR = (SCRIPT_DIR / "batch_execute").resolve()
 
 LLAMA_PARALLEL = 1
-CHATGPT_PARALLEL = 3
+CHATGPT_PARALLEL = 4
 
 SUMMARY_NAME = "summary.json"
+
+# -----------------------------
+# Retry policy
+# -----------------------------
+RETRY_ON_TIMEOUT = True
+MAX_RETRIES_PER_CONFIG = 3  # retries after the first attempt
+RETRY_BACKOFF_SEC = 5.0
+RETRY_BACKOFF_MULT = 2.0
+RETRY_BACKOFF_JITTER_SEC = 0.25
+
+TIMEOUT_PATTERNS = [
+    r"java\.net\.http\.HttpTimeoutException",
+    r"request timed out",
+    r"Failed after retries",
+    r"Read timed out",
+    r"connect timed out",
+]
 
 if not RUNNER.exists():
     raise FileNotFoundError(f"Runner not found: {RUNNER}")
@@ -48,7 +65,6 @@ def ts_stamp() -> str:
 
 
 def strip_jsonc_comments(text: str) -> str:
-    # Simple // comment stripper (like your sed)
     return re.sub(r"//.*$", "", text, flags=re.MULTILINE)
 
 
@@ -74,6 +90,38 @@ def sorted_configs(dirpath: Path) -> List[Path]:
         items.append((ml, cfg))
     items.sort(key=lambda t: t[0])
     return [p for _, p in items]
+
+
+def read_text_best_effort(path: Path, max_bytes: int = 250_000) -> str:
+    try:
+        if not path.exists():
+            return ""
+        data = path.read_bytes()
+        if len(data) > max_bytes:
+            data = data[-max_bytes:]
+        return data.decode("utf-8", errors="replace")
+    except Exception:
+        return ""
+
+
+_TIMEOUT_REGEXES = [re.compile(p, re.IGNORECASE) for p in TIMEOUT_PATTERNS]
+
+
+def is_timeout_failure(log_path: Path) -> bool:
+    txt = read_text_best_effort(log_path)
+    if not txt:
+        return False
+    return any(rx.search(txt) for rx in _TIMEOUT_REGEXES)
+
+
+def backoff_sleep(attempt_idx: int) -> None:
+    base = RETRY_BACKOFF_SEC * (RETRY_BACKOFF_MULT ** (attempt_idx - 1))
+    jitter = (time.time() % 1.0) * RETRY_BACKOFF_JITTER_SEC
+    time.sleep(base + jitter)
+
+
+def sanitize_name(s: str) -> str:
+    return re.sub(r"[^A-Za-z0-9._=-]+", "_", s)
 
 
 # -----------------------------
@@ -103,29 +151,26 @@ def kill_all_running() -> None:
     if not procs:
         return
 
-    # Escalate: INT -> TERM -> KILL
     for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGKILL):
         for p in procs:
             if p.poll() is not None:
                 continue
             try:
-                os.killpg(p.pid, sig)  # pgid == pid because we use setsid()
+                os.killpg(p.pid, sig)
             except ProcessLookupError:
                 pass
             except Exception:
                 pass
-        # small grace between escalations
         time.sleep(0.35)
 
 
 # -----------------------------
 # Runner
 # -----------------------------
-def start_process_in_own_pgroup(cmd: List[str], log_path: Path) -> subprocess.Popen:
+def start_process_in_own_pgroup(cmd: List[str], log_path: Path) -> Tuple[subprocess.Popen, Any]:
     log_path.parent.mkdir(parents=True, exist_ok=True)
     f = open(log_path, "wb")
 
-    # New session => new process group; pgid == pid. Then os.killpg(pid, SIG..) works reliably.
     p = subprocess.Popen(
         cmd,
         stdout=f,
@@ -134,13 +179,13 @@ def start_process_in_own_pgroup(cmd: List[str], log_path: Path) -> subprocess.Po
         close_fds=True,
     )
     _register_proc(p)
-    return p
+    return p, f
 
 
 def run_one(pool: str, cfg: Path, log_dir: Path, summary: Dict[str, Any], stop_event: threading.Event) -> int:
     cfg_key = f"{pool}:{cfg.name}"
-    base = cfg.stem
-    out = log_dir / f"{base}.log"
+    base = sanitize_name(cfg.stem)
+    safe_pool = sanitize_name(pool)
 
     start_iso = iso_now()
     start_t = time.time()
@@ -148,66 +193,136 @@ def run_one(pool: str, cfg: Path, log_dir: Path, summary: Dict[str, Any], stop_e
     entry = {
         "pool": pool,
         "config": str(cfg),
-        "log": str(out),
         "start": start_iso,
         "end": None,
         "duration_sec": None,
         "exit_code": None,
         "status": "running",
+        "attempts": [],
     }
     summary["runs"][cfg_key] = entry
 
-    print(f"==> START {dt.datetime.now():%F %T} | {cfg} | log={out}")
-
     cmd = [str(RUNNER), "-c", str(cfg), "-l", LOG_LEVEL]
-    p = start_process_in_own_pgroup(cmd, out)
+    max_attempts = 1 + (MAX_RETRIES_PER_CONFIG if RETRY_ON_TIMEOUT else 0)
 
-    try:
-        # If someone else already failed, don’t wait forever; let kill_all_running handle it.
-        while True:
-            if stop_event.is_set():
-                # someone failed elsewhere; we’re aborting
-                try:
-                    os.killpg(p.pid, signal.SIGINT)
-                except Exception:
-                    pass
-                break
+    final_code: int = 1
 
-            code = p.poll()
-            if code is not None:
-                break
-            time.sleep(0.1)
+    for attempt_num in range(1, max_attempts + 1):
+        if stop_event.is_set():
+            final_code = 1
+            break
 
-        code = p.wait() if p.poll() is None else p.returncode
+        if attempt_num == 1:
+            out = log_dir / f"{safe_pool}__{base}.log"
+        else:
+            out = log_dir / f"{safe_pool}__{base}__try{attempt_num}.log"
 
-    except KeyboardInterrupt:
-        # Ensure this child dies too
+        attempt_start_iso = iso_now()
+        attempt_start_t = time.time()
+
+        print(
+            f"==> START {dt.datetime.now():%F %T} | "
+            f"pool={pool} | cfg={cfg} | try={attempt_num}/{max_attempts} | log={out}"
+        )
+
+        if stop_event.is_set():
+            final_code = 1
+            break
+
+        p, fh = start_process_in_own_pgroup(cmd, out)
+
+        code: int = 1
         try:
-            os.killpg(p.pid, signal.SIGINT)
-        except Exception:
-            pass
-        code = 130
-    finally:
-        _unregister_proc(p)
+            while True:
+                if stop_event.is_set():
+                    try:
+                        os.killpg(p.pid, signal.SIGINT)
+                    except Exception:
+                        pass
+                    break
+
+                polled = p.poll()
+                if polled is not None:
+                    break
+                time.sleep(0.1)
+
+            code = p.wait() if p.poll() is None else (p.returncode if p.returncode is not None else 1)
+
+        except KeyboardInterrupt:
+            try:
+                os.killpg(p.pid, signal.SIGINT)
+            except Exception:
+                pass
+            code = 130
+        finally:
+            _unregister_proc(p)
+            try:
+                fh.close()
+            except Exception:
+                pass
+
+        attempt_end_iso = iso_now()
+        attempt_dur = round(time.time() - attempt_start_t, 3)
+
+        attempt_info = {
+            "try": attempt_num,
+            "log": str(out),
+            "start": attempt_start_iso,
+            "end": attempt_end_iso,
+            "duration_sec": attempt_dur,
+            "exit_code": int(code),
+            "timeout_detected": False,
+            "note": None,
+        }
+
+        if code == 0:
+            attempt_info["note"] = "ok"
+            entry["attempts"].append(attempt_info)
+            final_code = 0
+            print(f"==> DONE  {dt.datetime.now():%F %T} | cfg={cfg} | try={attempt_num} | exit=0")
+            break
+
+        timed_out = is_timeout_failure(out)
+        attempt_info["timeout_detected"] = bool(timed_out)
+        attempt_info["note"] = "timeout" if timed_out else "failed_non_timeout"
+        entry["attempts"].append(attempt_info)
+
+        print(
+            f"==> DONE  {dt.datetime.now():%F %T} | "
+            f"cfg={cfg} | try={attempt_num} | exit={code} | timeout={timed_out}"
+        )
+
+        if RETRY_ON_TIMEOUT and timed_out and attempt_num < max_attempts:
+            if stop_event.is_set():
+                final_code = int(code)
+                break
+            retry_idx = attempt_num
+            print(f"==> RETRY {dt.datetime.now():%F %T} | cfg={cfg} | sleeping before retry...")
+            backoff_sleep(retry_idx)
+            continue
+
+        final_code = int(code)
+        break
 
     end_iso = iso_now()
     dur = round(time.time() - start_t, 3)
 
     entry["end"] = end_iso
     entry["duration_sec"] = dur
-    entry["exit_code"] = int(code) if code is not None else None
+    entry["exit_code"] = int(final_code)
+    entry["status"] = "ok" if final_code == 0 else "failed"
 
-    if code == 0:
-        entry["status"] = "ok"
-    else:
-        entry["status"] = "failed"
-
-    print(f"==> DONE  {dt.datetime.now():%F %T} | {cfg} | exit={code} | log={out}")
-    return int(code) if code is not None else 1
+    return int(final_code)
 
 
-def run_pool(pool_name: str, cfg_dir: Path, parallel: int, log_dir: Path,
-             summary: Dict[str, Any], stop_event: threading.Event) -> int:
+def run_pool(
+    pool_name: str,
+    cfg_dir: Path,
+    parallel: int,
+    log_dir: Path,
+    summary: Dict[str, Any],
+    stop_event: threading.Event,
+) -> int:
     print(f"---- Pool: {pool_name} | dir={cfg_dir} | parallel={parallel} ----")
 
     cfgs = sorted_configs(cfg_dir)
@@ -215,7 +330,6 @@ def run_pool(pool_name: str, cfg_dir: Path, parallel: int, log_dir: Path,
         print(f"WARN: No configs found in {cfg_dir}", file=sys.stderr)
         return 0
 
-    # We manage a rolling window of futures so we can stop ASAP on first failure.
     in_flight: Dict[cf.Future[int], Path] = {}
 
     with cf.ThreadPoolExecutor(max_workers=parallel) as ex:
@@ -232,7 +346,6 @@ def run_pool(pool_name: str, cfg_dir: Path, parallel: int, log_dir: Path,
             fut = ex.submit(run_one, pool_name, cfg, log_dir, summary, stop_event)
             in_flight[fut] = cfg
 
-        # Prime the queue
         for _ in range(min(parallel, len(cfgs))):
             submit_next()
 
@@ -248,19 +361,16 @@ def run_pool(pool_name: str, cfg_dir: Path, parallel: int, log_dir: Path,
                     kill_all_running()
                     return 1
                 except Exception as e:
-                    # treat exceptions as failure
                     stop_event.set()
                     print(f"ERROR: {pool_name} crashed on {cfg}: {e}", file=sys.stderr)
                     kill_all_running()
                     return 1
 
                 if code != 0:
-                    # FIRST non-zero exit => stop everything
                     stop_event.set()
                     kill_all_running()
                     return 1
 
-                # Success => keep pipeline full
                 submit_next()
 
     return 0
@@ -287,12 +397,19 @@ def main() -> int:
         "log_dir": str(log_dir),
         "log_level": LOG_LEVEL,
         "runner": str(RUNNER),
+        "retry_policy": {
+            "retry_on_timeout": RETRY_ON_TIMEOUT,
+            "max_retries_per_config": MAX_RETRIES_PER_CONFIG,
+            "backoff_sec": RETRY_BACKOFF_SEC,
+            "backoff_mult": RETRY_BACKOFF_MULT,
+            "timeout_patterns": TIMEOUT_PATTERNS,
+        },
         "pools": {
             "llama-8b": {"dir": str(LLAMA_DIR), "parallel": LLAMA_PARALLEL},
             "chatgpt-5-mini": {"dir": str(CHATGPT_DIR), "parallel": CHATGPT_PARALLEL},
         },
-        "stop_reason": None,  # "first_nonzero_exit" | "signal" | "exception"
-        "runs": {},           # key -> entry
+        "stop_reason": None,
+        "runs": {},
         "exit_code": None,
     }
 
@@ -309,15 +426,12 @@ def main() -> int:
     signal.signal(signal.SIGTERM, handle_signal)
 
     try:
-        # Run both pools concurrently; if either fails, we stop both via stop_event + kill_all_running.
         with cf.ThreadPoolExecutor(max_workers=2) as ex:
             f1 = ex.submit(run_pool, "llama-8b", LLAMA_DIR, LLAMA_PARALLEL, log_dir, summary, stop_event)
             f2 = ex.submit(run_pool, "chatgpt-5-mini", CHATGPT_DIR, CHATGPT_PARALLEL, log_dir, summary, stop_event)
 
-            # Wait for first pool to finish/fail; if failure, trigger stop and kill.
             done, pending = cf.wait({f1, f2}, return_when=cf.FIRST_COMPLETED)
 
-            # If the first finished is failure, stop the other immediately.
             for f in done:
                 code = f.result()
                 if code != 0:
@@ -326,7 +440,6 @@ def main() -> int:
                     kill_all_running()
                     exit_code = 1
 
-            # If not failed yet, wait for the other. If it fails, stop.
             for f in pending:
                 code = f.result()
                 if code != 0:
