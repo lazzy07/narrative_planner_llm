@@ -1,11 +1,5 @@
-# File name: csv_maker.py
-# Project: 
-# Author: Lasantha M Senanayake
-# Date created: 2026-03-04 09:38:05
-# Date modified: 2026-03-04 10:24:29
-# ------
-
 #!/usr/bin/env python3
+
 import csv
 import json
 import sys
