@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-10 23:49:26
-// Date modified: 2026-03-04 01:57:53
+// Date modified: 2026-03-06 15:12:51
 * ------
 */
 
@@ -21,4 +21,6 @@ public interface GenericSearchNode {
   public List<GenericSearchNode> getChildNodes();
 
   public void addChildNode(GenericSearchNode node);
+
+  public String getExplaination();
 }
