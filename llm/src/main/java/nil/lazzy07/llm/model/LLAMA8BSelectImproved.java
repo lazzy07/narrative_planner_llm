@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-03-02 20:46:40
-// Date modified: 2026-03-02 20:48:05
+// Date modified: 2026-03-06 17:52:50
 * ------
 */
 
@@ -352,6 +352,7 @@ public class LLAMA8BSelectImproved extends LLMApi {
     // field:
     // if (root.size() == 0) return false;
 
+    @SuppressWarnings("deprecation")
     var fields = root.fields();
     while (fields.hasNext()) {
       var e = fields.next();
