@@ -3,15 +3,13 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:16:07
-// Date modified: 2026-03-05 12:21:50
+// Date modified: 2026-03-06 17:12:06
 * ------
 */
 
 package nil.lazzy07.planner.search;
 
 import java.nio.file.Path;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,8 +25,8 @@ import nil.lazzy07.common.llm.ActionEvaluationSelect;
 import nil.lazzy07.llm.model.LLMApi;
 import nil.lazzy07.llm.prompt.SearchPrompt;
 import nil.lazzy07.planner.config.ConfigFile;
-import nil.lazzy07.planner.config.ConfigFile.Search.Plan;
 import nil.lazzy07.planner.report.JsonUtils;
+import nil.lazzy07.planner.search.result.SearchResult;
 import nil.lazzy07.planner.search.type.SearchType;
 import nil.lazzy07.planner.search.util.ProgressionTreeMap;
 import nil.lazzy07.planner.search.util.SearchNode;
@@ -86,7 +84,7 @@ public class SearchSession {
 
         currentNode.addChildNode(newNode);
         newNode.setConfidence(1.0f - ((float) i / selectedEvaluations.size()));
-
+        newNode.setExplaination(selected.reason());
         this.searchType.addNode(newNode);
         this.noOfGeneratedNodes++;
         i++;
@@ -129,12 +127,14 @@ public class SearchSession {
     }
   }
 
-  public edu.uky.cs.nil.sabre.Plan<Action> startSearch() {
+  public SearchResult startSearch() {
     log.info("Search started with LLMApi: {}", this.llmApi.getType());
+
+    SearchNode currentNode = null;
 
     while (!this.searchType.isEmpty()) {
       // Get the next node
-      SearchNode currentNode = this.searchType.getNextNode();
+      currentNode = this.searchType.getNextNode();
       long currentNodeId = currentNode.getNodeId();
 
       ArrayList<CompiledAction> availableActions = currentNode.getAvailableActions();
@@ -149,7 +149,7 @@ public class SearchSession {
         edu.uky.cs.nil.sabre.Plan<Action> plan = this.treeMap.getPlan(currentNodeId);
         log.info("Planner achieved the utility: \n{} \n Nodes visited: {} \n Nodes expanded: {}",
             plan, this.noOfVisitedNodes, this.noOfGeneratedNodes);
-        return plan;
+        return new SearchResult(true, currentNode);
       }
 
       if (noOfVisitedNodes >= this.planConfigs.search().plan().maxNodes()) {
@@ -183,7 +183,7 @@ public class SearchSession {
     }
 
     log.warn("Planner finished without finding any solution. (Search queue is empty)");
-    return null;
+    return new SearchResult(false, currentNode);
   }
 
   public long getNoOfGeneratedNodes() {

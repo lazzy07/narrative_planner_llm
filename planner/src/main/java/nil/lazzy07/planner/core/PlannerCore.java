@@ -3,14 +3,12 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:01:17
-// Date modified: 2026-03-05 22:35:10
+// Date modified: 2026-03-06 19:14:42
 * ------
 */
 
 package nil.lazzy07.planner.core;
 
-import edu.uky.cs.nil.sabre.Action;
-import edu.uky.cs.nil.sabre.Plan;
 import edu.uky.cs.nil.sabre.Session;
 import edu.uky.cs.nil.sabre.comp.CompiledProblem;
 import edu.uky.cs.nil.sabre.io.ParseException;
@@ -30,12 +28,13 @@ import nil.lazzy07.planner.config.ConfigFile.Search.Cost;
 import nil.lazzy07.planner.config.ConfigFile.Search.Heuristic;
 import nil.lazzy07.planner.config.ConfigFile.Search.Type;
 import nil.lazzy07.planner.report.JsonUtils;
-import nil.lazzy07.planner.report.SearchResults;
+import nil.lazzy07.planner.report.SearchReport;
 import nil.lazzy07.planner.search.SearchSession;
 import nil.lazzy07.planner.search.cost.CostType;
 import nil.lazzy07.planner.search.cost.CostTypeFactory;
 import nil.lazzy07.planner.search.heuristic.HeuristicFactory;
 import nil.lazzy07.planner.search.heuristic.HeuristicType;
+import nil.lazzy07.planner.search.result.SearchResult;
 import nil.lazzy07.planner.search.type.SearchType;
 import nil.lazzy07.planner.search.type.SearchTypeFactory;
 import nil.lazzy07.planner.search.util.ProgressionTreeMap;
@@ -99,7 +98,9 @@ public class PlannerCore {
         this.compiledProblem.initial, searchConfigs.plan().utility());
 
     LLMApi api = LLMApiFactory.GetLLMApi(this.configs.llm().model().name(), this.configs.llm().cache().enabled(),
-        this.configs.llm().cache().directory(), this.configs.domain().name());
+        this.configs.llm().cache().directory() + this.configs.llm().prompt().version() + "/",
+        this.configs.domain().name());
+
     api.init();
 
     Prompt promptConfigs = this.configs.llm().prompt();
@@ -108,10 +109,10 @@ public class PlannerCore {
     SearchSession searchSession = new SearchSession(this.configs, this.progressionTreeMap, searchType, api);
     searchSession.initSearch();
 
-    Plan<Action> plan = searchSession.startSearch();
+    SearchResult searchResult = searchSession.startSearch();
 
-    SearchResults results = new SearchResults(configs, searchSession.getNoOfVisitedNodes(),
-        searchSession.getNoOfGeneratedNodes(), plan);
+    SearchReport results = new SearchReport(configs, searchSession.getNoOfVisitedNodes(),
+        searchSession.getNoOfGeneratedNodes(), searchResult);
 
     JsonUtils.saveToJson(
         DateTimeGenerator.GetTimeStamp() + "_" + configs.domain().name() + "_" + configs.llm().model().name() + "_"

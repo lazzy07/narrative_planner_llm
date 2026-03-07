@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 23:48:40
-// Date modified: 2026-03-04 13:52:21
+// Date modified: 2026-03-06 17:11:31
 * ------
 */
 
@@ -105,6 +105,14 @@ public class SearchNode implements GenericSearchNode {
     return this.llmResponse;
   }
 
+  public Plan<Action> getCurrentPlan() {
+    return SearchNode.treeMap.getPlan(this.nodeId);
+  }
+
+  public void setExplaination(String explaination) {
+    this.explaination = explaination;
+  }
+
   private List<String> availableActionsToStr() {
     List<String> planStr = new ArrayList<>();
 
@@ -121,6 +129,7 @@ public class SearchNode implements GenericSearchNode {
 
     node.put("nodeId", this.nodeId);
     node.put("prompt", this.prompt);
+    node.put("explaination", this.explaination);
     node.putPOJO("availableActions", availableActionsToStr());
 
     if (this.llmResponse != null) {
