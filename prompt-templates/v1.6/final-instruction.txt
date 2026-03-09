@@ -1,0 +1,13 @@
+Evaluate each candidate action independently.
+
+For action A with id N:
+- Actor = the first argument of the action.
+- Decide using ONLY that actor’s beliefs/goals.
+- Select A only if the actor believes A is possible now and believes A advances goals/survival or reduces uncertainty.
+- Exclude repeats if the same action already happened and nothing relevant changed.
+
+If more than 5 actions qualify, keep the 5 strongest by: (1) goal progress/survival, then (2) uncertainty reduction.
+
+Return ONLY:
+{"selections":[{"actionId":"N","reason":"one sentence citing the belief/goal that makes it rational"}]}
+or {"selections": []}.
