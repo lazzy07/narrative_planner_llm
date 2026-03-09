@@ -8,3 +8,8 @@
 /result
 /batch_execute
 /report
+
+# Virtual environments
+.venv/
+venv/
+env/

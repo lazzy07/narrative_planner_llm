@@ -27,7 +27,7 @@ LOGS_ROOT = (SCRIPT_DIR / "planner-logs").resolve()
 SUMMARY_DIR = (SCRIPT_DIR / "batch_execute").resolve()
 
 LLAMA_PARALLEL = 1
-CHATGPT_PARALLEL = 4
+CHATGPT_PARALLEL = 1
 
 SUMMARY_NAME = "summary.json"
 

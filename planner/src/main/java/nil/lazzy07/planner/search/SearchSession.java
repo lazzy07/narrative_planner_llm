@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:16:07
-// Date modified: 2026-03-06 17:12:06
+// Date modified: 2026-03-07 02:21:07
 * ------
 */
 
@@ -155,7 +155,7 @@ public class SearchSession {
       if (noOfVisitedNodes >= this.planConfigs.search().plan().maxNodes()) {
         log.info("Planner exhaused the search space, max # of nodes visited: {}",
             this.planConfigs.search().plan().maxNodes());
-        return null;
+        return new SearchResult(false, currentNode);
       }
 
       long planLength = this.treeMap.getPlan(currentNodeId).size();
