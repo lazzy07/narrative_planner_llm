@@ -1,4 +1,4 @@
-you are selecting the next action for the action taker for that specific action.
+You are selecting the next action for the action taker for that specific action.
 
 goal:
 advance this character’s side of the story in a way that is rational given their beliefs.
