@@ -21,13 +21,13 @@ LOG_LEVEL = os.environ.get("LOG_LEVEL", "TRACE")
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 RUNNER = (SCRIPT_DIR / "run-planner.sh").resolve()
-LLAMA_DIR = (SCRIPT_DIR / "config-files/v1.4/a-star/llama-8b").resolve()
-CHATGPT_DIR = (SCRIPT_DIR / "config-files/v1.4/a-star/chatgpt-5-mini").resolve()
+LLAMA_DIR = (SCRIPT_DIR / "config-files/v1.7/a-star/llama-8b").resolve()
+CHATGPT_DIR = (SCRIPT_DIR / "config-files/v1.7/a-star/chatgpt-5-mini").resolve()
 LOGS_ROOT = (SCRIPT_DIR / "planner-logs").resolve()
 SUMMARY_DIR = (SCRIPT_DIR / "batch_execute").resolve()
 
 LLAMA_PARALLEL = 1
-CHATGPT_PARALLEL = 1
+CHATGPT_PARALLEL = 4
 
 SUMMARY_NAME = "summary.json"
 

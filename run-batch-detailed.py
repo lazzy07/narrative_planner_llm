@@ -29,8 +29,8 @@ LOG_LEVEL = os.environ.get("LOG_LEVEL", "TRACE")
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 RUNNER = (SCRIPT_DIR / "run-planner.sh").resolve()
-LLAMA_DIR = (SCRIPT_DIR / "config-files/v1.4/a-star/llama-8b").resolve()
-CHATGPT_DIR = (SCRIPT_DIR / "config-files/v1.4/a-star/chatgpt-5-mini").resolve()
+LLAMA_DIR = (SCRIPT_DIR / "config-files/v1.7/a-star/llama-8b").resolve()
+CHATGPT_DIR = (SCRIPT_DIR / "config-files/v1.7/a-star/chatgpt-5-mini").resolve()
 LOGS_ROOT = (SCRIPT_DIR / "planner-logs").resolve()
 SUMMARY_DIR = (SCRIPT_DIR / "batch_execute").resolve()
 
@@ -40,7 +40,9 @@ CHATGPT_PARALLEL = 4
 SUMMARY_NAME = "summary.json"
 
 # live log display
-TAIL_LINES_PER_JOB = 16
+TAIL_LINES_PER_JOB = 8
+MAX_ACTIVE_PANELS = 3
+MAX_FINISHED_PANELS = 3
 UI_REFRESH_HZ = 6.0
 
 # -----------------------------
@@ -148,8 +150,7 @@ def sanitize_name(s: str) -> str:
 
 
 def short_cfg_name(cfg: str | Path) -> str:
-    p = Path(cfg)
-    return p.name
+    return Path(cfg).name
 
 
 def duration_str(seconds: Optional[float]) -> str:
@@ -161,6 +162,16 @@ def duration_str(seconds: Optional[float]) -> str:
     if h > 0:
         return f"{h:02d}:{m:02d}:{s:02d}"
     return f"{m:02d}:{s:02d}"
+
+
+def ellipsize_middle(s: str, max_len: int) -> str:
+    if len(s) <= max_len:
+        return s
+    if max_len <= 3:
+        return s[:max_len]
+    left = (max_len - 3) // 2
+    right = max_len - 3 - left
+    return s[:left] + "..." + s[-right:]
 
 
 # -----------------------------
@@ -216,7 +227,6 @@ def ui_job_attempt_start(job_id: str, attempt: int, max_attempts: int, log_path:
         job = _ui_state["jobs"].setdefault(job_id, {})
         pool = job.get("pool")
         if pool in _ui_state["pools"]:
-            # only increment running when transitioning from non-running
             if job.get("status") not in {"running"}:
                 _ui_state["pools"][pool]["running"] += 1
 
@@ -308,7 +318,7 @@ def build_header_panel(state: Dict[str, Any]) -> Panel:
         f"Run ID: {state['run_id'] or '-'}",
         f"Elapsed: {elapsed}",
         f"Stop reason: {state['stop_reason'] or '-'}",
-        f"Logs: {state['log_dir'] or '-'}",
+        ellipsize_middle(f"Logs: {state['log_dir'] or '-'}", 60),
     )
 
     return Panel(info, title=title, border_style="bright_white")
@@ -390,8 +400,8 @@ def build_job_panel(job: Dict[str, Any]) -> Panel:
     meta.add_column(ratio=1)
     meta.add_column(ratio=1)
     meta.add_row(
-        f"Config: {job['cfg']}",
-        f"Log: {job['log_path'] or '-'}",
+        f"Config: {ellipsize_middle(job['cfg'], 70)}",
+        f"Log: {ellipsize_middle(job['log_path'] or '-', 70)}",
     )
     if job.get("note"):
         meta.add_row(f"Note: {job['note']}", "")
@@ -428,7 +438,7 @@ def build_active_jobs_panel(state: Dict[str, Any]) -> Panel:
         return Panel(Text("No active planners.", style="dim"), title="Active logs", border_style="bright_white")
 
     active.sort(key=lambda j: (j["pool"], Path(j["cfg"]).name))
-    panels = [build_job_panel(j) for j in active]
+    panels = [build_job_panel(j) for j in active[:MAX_ACTIVE_PANELS]]
     return Panel(Group(*panels), title="Active planners", border_style="bright_white")
 
 
@@ -445,7 +455,7 @@ def build_finished_jobs_panel(state: Dict[str, Any]) -> Panel:
             Path(j["cfg"]).name,
         )
     )
-    panels = [build_job_panel(j) for j in finished[:8]]
+    panels = [build_job_panel(j) for j in finished[:MAX_FINISHED_PANELS]]
     return Panel(Group(*panels), title="Recently finished", border_style="bright_white")
 
 
@@ -455,8 +465,8 @@ def build_dashboard() -> Layout:
 
     layout = Layout()
     layout.split_column(
-        Layout(name="header", size=3),
-        Layout(name="upper", size=11),
+        Layout(name="header", size=5),
+        Layout(name="upper", size=12),
         Layout(name="middle", ratio=2),
         Layout(name="lower", ratio=2),
     )
@@ -477,7 +487,7 @@ def build_dashboard() -> Layout:
 # Process-group tracking + killing
 # -----------------------------
 _running_lock = threading.Lock()
-_running_procs: Dict[int, subprocess.Popen] = {}  # pid -> Popen
+_running_procs: Dict[int, subprocess.Popen] = {}
 
 
 def _register_proc(p: subprocess.Popen) -> None:
@@ -640,7 +650,7 @@ def run_one(pool: str, cfg: Path, log_dir: Path, summary: Dict[str, Any], stop_e
                 ui_job_finished(job_id, ok=False, exit_code=final_code, note="stopped")
                 break
 
-            ui_job_retry_wait(job_id, f"timeout detected, retrying soon")
+            ui_job_retry_wait(job_id, "timeout detected, retrying soon")
             retry_idx = attempt_num
             backoff_sleep(retry_idx)
             continue
@@ -786,13 +796,20 @@ def main() -> int:
     signal.signal(signal.SIGTERM, handle_signal)
 
     try:
-        with Live(build_dashboard(), console=console, refresh_per_second=UI_REFRESH_HZ, screen=True) as live:
+        with Live(
+            build_dashboard(),
+            console=console,
+            screen=False,
+            auto_refresh=False,
+            vertical_overflow="crop",
+            transient=False,
+        ) as live:
             with cf.ThreadPoolExecutor(max_workers=2) as ex:
                 f1 = ex.submit(run_pool, "llama-8b", LLAMA_DIR, LLAMA_PARALLEL, log_dir, summary, stop_event)
                 f2 = ex.submit(run_pool, "chatgpt-5-mini", CHATGPT_DIR, CHATGPT_PARALLEL, log_dir, summary, stop_event)
 
                 while True:
-                    live.update(build_dashboard())
+                    live.update(build_dashboard(), refresh=True)
 
                     if f1.done() and f2.done():
                         break
@@ -812,7 +829,7 @@ def main() -> int:
                     ui_set_global_status("ok", None)
                     exit_code = 0
 
-                live.update(build_dashboard())
+                live.update(build_dashboard(), refresh=True)
 
     except KeyboardInterrupt:
         exit_code = 1
