@@ -1,9 +1,9 @@
 /*
-* File name: ChatGPT5MiniSelectStructured.java
+* File name: ChatGPTMiniJson.java
 * Project: 
 * Author: Lasantha M Senanayake
-* Date created: 2026-03-06 14:14:58
-// Date modified: 2026-03-09 16:27:24
+* Date created: 2026-03-09 16:22:07
+// Date modified: 2026-03-09 18:07:52
 * ------
 */
 
@@ -12,7 +12,6 @@ package nil.lazzy07.llm.model;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.io.IOException;
 import java.net.URI;
@@ -29,25 +28,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * OpenAI Responses client (gpt-5-mini) using text.format json_schema.
+ * OpenAI Responses client (gpt-5-mini) using JSON mode.
  *
- * Model output schema on the wire:
+ * Expected model output shape:
  * {
- * "selections": [
- * { "actionId": "12", "reason": "..." },
- * { "actionId": "44", "reason": "..." }
- * ]
+ * "12": "brief belief-based justification",
+ * "44": "brief belief-based justification"
  * }
  *
- * Public normalized return value stays:
- * { "12": "reason", "44": "reason" }
- *
- * Why this shape?
- * - Strict structured outputs fit fixed schemas much better than dynamic-key
- * maps.
- * - This avoids repair loops and reduces timeout frequency.
+ * Why JSON mode instead of json_schema?
+ * - The prompt already asks for a dynamic-key JSON object.
+ * - json_schema is a poor fit for dynamic-key maps.
+ * - JSON mode guarantees valid JSON while letting us validate the exact shape
+ * ourselves.
  */
-public class ChatGPT5MiniSelectStructured extends LLMApi {
+public class ChatGPTMiniJson extends LLMApi {
   private static final Logger log = LoggerFactory.getLogger(ChatGPT5MiniSelectStructured.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -63,19 +58,19 @@ public class ChatGPT5MiniSelectStructured extends LLMApi {
 
   private volatile HttpClient client;
 
-  public ChatGPT5MiniSelectStructured(boolean useCache, String cacheDirectory, String domain) {
+  public ChatGPTMiniJson(boolean useCache, String cacheDirectory, String domain) {
     this(
         useCache,
         cacheDirectory,
         domain,
         URI.create("https://api.openai.com/v1/responses"),
         Duration.ofSeconds(30), // connect timeout
-        Duration.ofSeconds(240), // request timeout: much larger than before
+        Duration.ofSeconds(240), // request timeout
         System.getenv("OPENAI_API_KEY"),
         3);
   }
 
-  public ChatGPT5MiniSelectStructured(
+  public ChatGPTMiniJson(
       boolean useCache,
       String cacheDirectory,
       String domain,
@@ -106,7 +101,7 @@ public class ChatGPT5MiniSelectStructured extends LLMApi {
   /** Planner convenience wrapper. Returns normalized JSON object string. */
   public String queryActionSelectJson(String systemPrompt, String userPrompt) {
     Map<String, Object> params = new LinkedHashMap<>();
-    params.put("output_schema", "ActionSelectV2");
+    params.put("output_schema", "ActionSelectMap");
     return query(systemPrompt, userPrompt, params);
   }
 
@@ -122,21 +117,18 @@ public class ChatGPT5MiniSelectStructured extends LLMApi {
             Map.of("role", "user", "content", userPrompt)
         });
 
-    // Keep medium reasoning as requested.
     body.put("reasoning", Map.of("effort", "medium"));
 
-    // Use Structured Outputs via Responses API text.format.
-    body.put("text", Map.of("format", buildActionSelectSchema()));
+    // JSON mode: valid JSON object output, no fixed wrapper schema.
+    body.put("text", Map.of(
+        "format", Map.of("type", "json_object")));
 
-    // Optional: stable cache key can help repeated similar prompts.
-    // Safe to omit if you do not want it.
     Object promptCacheKey = parameters != null ? parameters.get("prompt_cache_key") : null;
     if (promptCacheKey instanceof String s && !s.isBlank()) {
       body.put("prompt_cache_key", s);
       body.put("prompt_cache_retention", "24h");
     }
 
-    // Optional service tier pass-through if you want to configure it elsewhere.
     Object serviceTier = parameters != null ? parameters.get("service_tier") : null;
     if (serviceTier instanceof String s && !s.isBlank()) {
       body.put("service_tier", s);
@@ -165,8 +157,7 @@ public class ChatGPT5MiniSelectStructured extends LLMApi {
       throw new RuntimeException("OpenAI error " + resp.statusCode() + ": " + resp.body());
     }
 
-    // Return parsed structured JSON payload, not free-form output_text.
-    return extractStructuredSelectionJson(resp.body()).trim();
+    return extractJsonObjectText(resp.body()).trim();
   }
 
   @Override
@@ -176,53 +167,13 @@ public class ChatGPT5MiniSelectStructured extends LLMApi {
       String userPrompt,
       Map<String, Object> parameters) {
 
-    // rawResponse here is already expected to be the structured JSON string
-    // matching ActionSelectV2.
-    String normalized = normalizeStructuredSelectionsToMap(rawResponse);
+    String normalized = compactJsonObject(rawResponse);
 
     if (isValidActionSelectMapJson(normalized)) {
       return normalized;
     }
 
-    // No repair re-call: structured outputs should eliminate most bad-shape cases.
-    // Failing fast here avoids multiplying timeout risk.
-    throw new RuntimeException("Model returned invalid structured ActionSelect JSON: " + rawResponse);
-  }
-
-  // ================================
-  // Structured Outputs schema
-  // ================================
-
-  private Map<String, Object> buildActionSelectSchema() {
-    Map<String, Object> itemSchema = new LinkedHashMap<>();
-    itemSchema.put("type", "object");
-    itemSchema.put("properties", Map.of(
-        "actionId", Map.of(
-            "type", "string",
-            "pattern", "^[0-9]+$"),
-        "reason", Map.of(
-            "type", "string",
-            "minLength", 1)));
-    itemSchema.put("required", new String[] { "actionId", "reason" });
-    itemSchema.put("additionalProperties", false);
-
-    Map<String, Object> rootSchema = new LinkedHashMap<>();
-    rootSchema.put("type", "object");
-    rootSchema.put("properties", Map.of(
-        "selections", Map.of(
-            "type", "array",
-            "maxItems", 5,
-            "items", itemSchema)));
-    rootSchema.put("required", new String[] { "selections" });
-    rootSchema.put("additionalProperties", false);
-
-    Map<String, Object> format = new LinkedHashMap<>();
-    format.put("type", "json_schema");
-    format.put("name", "action_select_v2");
-    format.put("strict", true);
-    format.put("schema", rootSchema);
-
-    return format;
+    throw new RuntimeException("Model returned invalid ActionSelect JSON: " + rawResponse);
   }
 
   // ================================
@@ -230,16 +181,16 @@ public class ChatGPT5MiniSelectStructured extends LLMApi {
   // ================================
 
   /**
-   * Extracts the structured JSON string from the Responses API payload.
+   * Extracts the JSON object string from the Responses API payload.
    *
    * We try, in order:
-   * 1) response.output_text if present and parseable
-   * 2) output[].content[] text blobs that look like JSON
+   * 1) response.output_text if present and parseable as a JSON object
+   * 2) output[].content[] text blobs that parse as a JSON object
    *
    * Also checks top-level response status and surfaces incomplete responses
    * clearly.
    */
-  private String extractStructuredSelectionJson(String responseJson) {
+  private String extractJsonObjectText(String responseJson) {
     try {
       JsonNode root = MAPPER.readTree(responseJson);
 
@@ -250,7 +201,6 @@ public class ChatGPT5MiniSelectStructured extends LLMApi {
             "Responses API returned incomplete result. reason=" + reason + ", body=" + responseJson);
       }
 
-      // First try convenience field if present.
       String outputText = root.path("output_text").asText("");
       if (!outputText.isBlank()) {
         JsonNode parsed = tryParseJson(outputText);
@@ -270,7 +220,6 @@ public class ChatGPT5MiniSelectStructured extends LLMApi {
           for (JsonNode c : content) {
             String type = c.path("type").asText("");
 
-            // Most text-bearing content comes through here.
             if ("output_text".equals(type) || "text".equals(type)) {
               String text = c.path("text").asText("");
               if (!text.isBlank()) {
@@ -281,15 +230,14 @@ public class ChatGPT5MiniSelectStructured extends LLMApi {
               }
             }
 
-            // Refusal support: make it explicit instead of silently failing parsing.
             if ("refusal".equals(type)) {
-              throw new RuntimeException("Model refused structured output: " + c.toString());
+              throw new RuntimeException("Model refused JSON output: " + c.toString());
             }
           }
         }
       }
 
-      throw new RuntimeException("No structured JSON payload found in Responses output: " + responseJson);
+      throw new RuntimeException("No JSON object payload found in Responses output: " + responseJson);
 
     } catch (RuntimeException re) {
       throw re;
@@ -303,6 +251,18 @@ public class ChatGPT5MiniSelectStructured extends LLMApi {
       return MAPPER.readTree(s);
     } catch (Exception e) {
       return null;
+    }
+  }
+
+  private String compactJsonObject(String json) {
+    try {
+      JsonNode root = MAPPER.readTree(json);
+      if (!root.isObject()) {
+        throw new RuntimeException("Expected JSON object");
+      }
+      return MAPPER.writeValueAsString(root);
+    } catch (JsonProcessingException e) {
+      throw new RuntimeException("Failed to parse model JSON object", e);
     }
   }
 
@@ -326,6 +286,7 @@ public class ChatGPT5MiniSelectStructured extends LLMApi {
           if (attempt >= maxAttempts) {
             return resp;
           }
+          log.warn("OpenAI transient HTTP {} on attempt {}/{}; retrying.", code, attempt, maxAttempts);
           sleepMs(backoffMs(attempt));
           continue;
         }
@@ -337,12 +298,15 @@ public class ChatGPT5MiniSelectStructured extends LLMApi {
         if (attempt >= maxAttempts) {
           throw new RuntimeException("Failed after retries", ie);
         }
+        log.warn("Interrupted during OpenAI request on attempt {}/{}; retrying.", attempt, maxAttempts);
         sleepMs(backoffMs(attempt));
 
       } catch (IOException ioe) {
         if (attempt >= maxAttempts) {
           throw new RuntimeException("Failed after retries", ioe);
         }
+        log.warn("I/O error during OpenAI request on attempt {}/{}; retrying: {}",
+            attempt, maxAttempts, ioe.toString());
         sleepMs(backoffMs(attempt));
       }
     }
@@ -362,60 +326,18 @@ public class ChatGPT5MiniSelectStructured extends LLMApi {
   }
 
   // ================================
-  // Normalization
-  // ================================
-
-  /**
-   * Convert structured wire format:
-   * {
-   * "selections": [{"actionId":"12","reason":"..."}, ...]
-   * }
-   *
-   * into normalized compact map JSON:
-   * {"12":"...","44":"..."}
-   */
-  private String normalizeStructuredSelectionsToMap(String json) {
-    try {
-      JsonNode root = MAPPER.readTree(json);
-      JsonNode selections = root.path("selections");
-
-      if (!selections.isArray()) {
-        throw new RuntimeException("Missing selections[] in structured response");
-      }
-
-      ObjectNode out = MAPPER.createObjectNode();
-
-      for (JsonNode item : selections) {
-        String actionId = item.path("actionId").asText("").trim();
-        String reason = item.path("reason").asText("").trim();
-
-        if (actionId.isEmpty() || reason.isEmpty()) {
-          throw new RuntimeException("Invalid selection item: " + item);
-        }
-
-        // last write wins if duplicates somehow occur
-        out.put(actionId, reason);
-      }
-
-      return MAPPER.writeValueAsString(out);
-
-    } catch (JsonProcessingException e) {
-      throw new RuntimeException("Failed to normalize structured selections JSON", e);
-    }
-  }
-
-  // ================================
   // Validation
   // ================================
 
   /**
    * Validates normalized ActionSelectMap schema:
-   * JSON object with digit-only keys and string values.
+   * JSON object with digit-only keys and non-empty string values.
    */
   private boolean isValidActionSelectMapJson(String s) {
     if (s == null) {
       return false;
     }
+
     String trimmed = s.trim();
     if (trimmed.isEmpty()) {
       return false;
@@ -432,10 +354,7 @@ public class ChatGPT5MiniSelectStructured extends LLMApi {
       return false;
     }
 
-    if (root.size() > 5) {
-      return false;
-    }
-
+    @SuppressWarnings("deprecation")
     Iterator<Map.Entry<String, JsonNode>> fields = root.fields();
     while (fields.hasNext()) {
       Map.Entry<String, JsonNode> e = fields.next();
@@ -445,16 +364,17 @@ public class ChatGPT5MiniSelectStructured extends LLMApi {
       if (key == null || !key.matches("^[0-9]+$")) {
         return false;
       }
+
       if (val == null || !val.isTextual()) {
         return false;
       }
 
-      String r = val.asText().trim();
-      if (r.isEmpty()) {
+      String reason = val.asText().trim();
+      if (reason.isEmpty()) {
         return false;
       }
 
-      String lower = r.toLowerCase();
+      String lower = reason.toLowerCase();
       if (lower.equals("n/a") || lower.equals("na") || lower.equals("none")) {
         return false;
       }
