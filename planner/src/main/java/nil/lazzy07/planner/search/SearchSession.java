@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:16:07
-// Date modified: 2026-03-07 02:21:07
+// Date modified: 2026-03-09 18:08:59
 * ------
 */
 
@@ -71,8 +71,10 @@ public class SearchSession {
 
   private void expandSearchSelect(SearchNode currentNode, List<ActionEvaluationSelect> selectedEvaluations) {
     int i = 0;
+
+    ArrayList<CompiledAction> availableActions = this.treeMap.getAvailableActions(currentNode.getNodeId());
+
     for (ActionEvaluationSelect selected : selectedEvaluations) {
-      ArrayList<CompiledAction> availableActions = this.treeMap.getAvailableActions(currentNode.getNodeId());
       int actionId = selected.actionId() - 1;
 
       try {
