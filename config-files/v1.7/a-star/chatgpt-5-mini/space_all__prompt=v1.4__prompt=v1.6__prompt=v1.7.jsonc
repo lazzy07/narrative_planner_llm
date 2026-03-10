@@ -1,0 +1,44 @@
+{
+  "domain": {
+    "file": "problems/space.txt",
+    "name": "space_all"
+  },
+  "llm": {
+    "cache": {
+      "directory": ".openai-cache/",
+      "enabled": true
+    },
+    "model": {
+      "config": {},
+      "name": "chatgpt-5-mini"
+    },
+    "prompt": {
+      "directory": "prompt-templates/",
+      "explanation": true,
+      "version": "v1.7"
+    }
+  },
+  "output": {
+    "directory": "output/",
+    "save": true
+  },
+  "search": {
+    "cost": {
+      "config": {},
+      "type": "plan-length"
+    },
+    "heuristic": {
+      "config": {},
+      "type": "rp"
+    },
+    "plan": {
+      "max-length": 8,
+      "max-nodes": 5000,
+      "utility": 5
+    },
+    "type": {
+      "config": {},
+      "name": "best-first"
+    }
+  }
+}

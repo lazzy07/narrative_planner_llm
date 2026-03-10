@@ -1,0 +1,44 @@
+{
+  "domain": {
+    "file": "problems/fantasy.txt",
+    "name": "fantasy_all"
+  },
+  "llm": {
+    "cache": {
+      "directory": ".llama-8b-cache/",
+      "enabled": true
+    },
+    "model": {
+      "config": {},
+      "name": "llama-8b"
+    },
+    "prompt": {
+      "directory": "prompt-templates/",
+      "explanation": true,
+      "version": "v1.6"
+    }
+  },
+  "output": {
+    "directory": "output/",
+    "save": true
+  },
+  "search": {
+    "cost": {
+      "config": {},
+      "type": "plan-length"
+    },
+    "heuristic": {
+      "config": {},
+      "type": "rp"
+    },
+    "plan": {
+      "max-length": 11,
+      "max-nodes": 5000,
+      "utility": 3
+    },
+    "type": {
+      "config": {},
+      "name": "best-first"
+    }
+  }
+}
