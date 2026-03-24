@@ -1,0 +1,27 @@
+You are selecting the next action for the action taker for that specific action.
+
+goal:
+advance this character’s side of the story in a way that is rational given their beliefs.
+
+remember:
+- use only explicitly stated facts and beliefs.
+- do not create new information.
+- do not assume hidden truths.
+- do not reason from author omniscience.
+- if an action was already performed and nothing changed, avoid repeating it.
+
+before selecting:
+1. examine the current world state.
+2. examine the character’s beliefs.
+3. examine the current plan prefix.
+4. identify what this character is trying to achieve.
+5. determine what makes sense from their perspective.
+
+only endorse actions that:
+- move the character closer to their goal,
+- or resolve uncertainty blocking that goal,
+- or respond to perceived danger.
+
+if no action meaningfully advances the character’s side of the story, return {}.
+
+return only the json object.
