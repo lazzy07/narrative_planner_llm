@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-25 04:33:08
-// Date modified: 2026-02-25 09:10:29
+// Date modified: 2026-03-23 11:39:13
 * ------
 */
 
@@ -31,8 +31,22 @@ public class Aladdin extends DomainConverter {
     others.put("Lamp", "The magic lamp");
 
     this.domainDescription = """
-        The problem is an alternative version of the tale of Aladdin, which was added to a later edition of One Thousand and One Nights and later adapted into a 1992 Disney film with some elements been changed. Jafar is king, not adviser to the king. A dragon has been added. The end of the story has been changed. Jasmine should be married to Jafar and the genie should be dead. Everyone wants to be alive and unafraid. Aladdin, Jafar, and Jasmine each want to be happy. Servants want to do what their masters command them to do. The story must end with either Jafar being married to Jasmine or the genie being dead. There are 5 characters: Aladdin, Jafar, Jasmine, Dragon and Genie. Also there are 2 places: Castle and Mountain.
-            """;
+        This is an alternative version of the story of Aladdin. Some elements have been changed. Jafar is the king, not the adviser to the king. A dragon has been added. The end of the story has been changed. There are two locations in the story: the castle and the mountains. There are five characters in the story. Aladdin is the main character and wants to be married to someone he loves. Jafar is the king. Jafar is the master of Aladdin. Jafar wants to be married to someone he loves. Jasmine is a princess, and she wants to be married to someone she loves. The genie has magic powers and can grant wishes. There is also a dragon. All characters want to stay alive and to not be frightened. Characters want to do what their masters command them to do.
+
+        Action Descriptions:
+        travel: [1] travels from [2] to [3].
+        slay: [1] slays [2] at [3].
+        pillage: [1] takes [3] from the body of [2] at [4].
+        give: [1] gives [3] to [2] at [4].
+        summon: [1] summons the genie from the lamp at [4], and if the genie has no master, [1] becomes the master of the genie.
+        love_spell: The genie casts a love spell to make [2] fall in love with [3].
+        marry: [1] and [2] get married at [3].
+        fall_in_love: [1] falls in loves with [2] at [3].
+        command_kill: [1] commands [2] to slay [3].
+        command_love: [1] commands [2] to make [3] fall in love with [1].
+        command_bring: [1] commands [2] to bring [3] to [1].
+        appear_threatening: [1] frightens [2] at [3].
+        """;
   }
 
   public String authorGoal() {
