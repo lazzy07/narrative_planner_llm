@@ -1,0 +1,44 @@
+{
+  "domain": {
+    "file": "problems/hospital.txt",
+    "name": "hospital_any"
+  },
+  "llm": {
+    "cache": {
+      "directory": ".openai-cache/",
+      "enabled": true
+    },
+    "model": {
+      "config": {},
+      "name": "chatgpt-5-mini"
+    },
+    "prompt": {
+      "directory": "prompt-templates/",
+      "explanation": true,
+      "version": "v1.8"
+    }
+  },
+  "output": {
+    "directory": "output/",
+    "save": true
+  },
+  "search": {
+    "cost": {
+      "config": {},
+      "type": "plan-length"
+    },
+    "heuristic": {
+      "config": {},
+      "type": "rp"
+    },
+    "plan": {
+      "max-length": 6,
+      "max-nodes": 5000,
+      "utility": 1
+    },
+    "type": {
+      "config": {},
+      "name": "best-first"
+    }
+  }
+}
