@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:16:07
-// Date modified: 2026-03-09 18:08:59
+// Date modified: 2026-03-23 11:30:10
 * ------
 */
 
@@ -169,10 +169,15 @@ public class SearchSession {
         continue;
       }
 
-      String response = this.llmApi.query(SearchPrompt.GetSystemPrompt(), currentNode.getPrompt());
+      // Check if random response available through random generator (Available only
+      // if planner is random).
+      String response = this.llmApi.query(currentNode.getAvailableActions());
+
+      if (response == null) {
+        response = this.llmApi.query(SearchPrompt.GetSystemPrompt(), currentNode.getPrompt());
+      }
 
       currentNode.setLLMResponse(response);
-      saveNodeData(currentNode);
       List<ActionEvaluationSelect> selectedEvaluations = ActionEvaluationParser
           .parseActionEvaluationSelectsImproved(response);
 
@@ -180,7 +185,7 @@ public class SearchSession {
 
       log.info("Evaluation completed: NodeID: {} Selected actions: {} Visited: {}", currentNodeId,
           selectedEvaluations.size(), this.noOfVisitedNodes);
-
+      saveNodeData(currentNode);
       this.noOfVisitedNodes++;
     }
 

@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 22:51:18
-// Date modified: 2026-03-04 01:14:00
+// Date modified: 2026-03-11 20:51:58
 * ------
 */
 
@@ -146,5 +146,9 @@ public class ProgressionTreeMap implements GenericTreeMap {
       return isSolution(tree.getBefore(before),
           action || (event instanceof Action && !event.getPrecondition().equals(False.FALSE)), after);
     }
+  }
+
+  public CompiledAction getCurrentAction(long node) {
+    return tree.getAction(node);
   }
 }

@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-02 23:48:40
-// Date modified: 2026-03-06 17:11:31
+// Date modified: 2026-03-23 14:05:45
 * ------
 */
 
@@ -123,6 +123,20 @@ public class SearchNode implements GenericSearchNode {
     return planStr;
   }
 
+  private List<Long> getChildNodeIDs() {
+    List<Long> childNodeIDs = new ArrayList<>();
+
+    for (GenericSearchNode node : this.childNodes) {
+      childNodeIDs.add(node.getNodeId());
+    }
+
+    return childNodeIDs;
+  }
+
+  public CompiledAction getAction() {
+    return SearchNode.treeMap.getCurrentAction(this.nodeId);
+  }
+
   public String toJsonString() {
     ObjectMapper objMapper = new ObjectMapper();
     ObjectNode node = objMapper.createObjectNode();
@@ -131,6 +145,18 @@ public class SearchNode implements GenericSearchNode {
     node.put("prompt", this.prompt);
     node.put("explaination", this.explaination);
     node.putPOJO("availableActions", availableActionsToStr());
+
+    CompiledAction action = this.getAction();
+
+    if (action != null) {
+      node.put("action", action.toString());
+    }
+
+    if (this.parentNode != null) {
+      node.put("parentNode", this.parentNode.getNodeId());
+    }
+
+    node.putPOJO("childNodes", this.getChildNodeIDs());
 
     if (this.llmResponse != null) {
       node.put("llmResponse", this.llmResponse);
@@ -141,5 +167,9 @@ public class SearchNode implements GenericSearchNode {
     } catch (JsonProcessingException e) {
       throw new RuntimeException("Cannot generate the final report: JSON parse error");
     }
+  }
+
+  public CompiledAction getCurrentAction() {
+    return SearchNode.treeMap.getCurrentAction(this.nodeId);
   }
 }
