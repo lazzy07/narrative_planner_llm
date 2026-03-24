@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-01-25 22:44:36
-// Date modified: 2026-03-09 16:30:58
+// Date modified: 2026-03-23 11:17:24
 * ------
 */
 
@@ -12,6 +12,7 @@ package nil.lazzy07.llm;
 import nil.lazzy07.llm.model.ChatGPTMiniJson;
 import nil.lazzy07.llm.model.LLAMA8BJson;
 import nil.lazzy07.llm.model.LLMApi;
+import nil.lazzy07.llm.model.RandomSelector;
 
 public class LLMApiFactory {
   public static LLMApi GetLLMApi(String type, boolean useCache, String cacheDirectory, String domain) {
@@ -20,6 +21,8 @@ public class LLMApiFactory {
         return new ChatGPTMiniJson(useCache, cacheDirectory, domain);
       case "llama-8b":
         return new LLAMA8BJson(useCache, cacheDirectory, domain);
+      case "random":
+        return new RandomSelector(useCache, cacheDirectory, domain);
       default:
         return null;
     }

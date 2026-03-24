@@ -3,7 +3,7 @@
 * Project: 
 * Author: Lasantha M Senanayake
 * Date created: 2026-02-11 03:09:57
-// Date modified: 2026-03-06 17:52:25
+// Date modified: 2026-03-23 11:31:37
 * ------
 */
 package nil.lazzy07.llm.model;
@@ -11,6 +11,7 @@ package nil.lazzy07.llm.model;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
+import edu.uky.cs.nil.sabre.comp.CompiledAction;
 import nil.lazzy07.llm.request.LLMRequest;
 
 import java.io.IOException;
@@ -21,6 +22,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.Map;
 
@@ -70,12 +72,13 @@ public abstract class LLMApi {
     }
   }
 
-  // =========================
-  // PUBLIC ENTRY POINTS
-  // =========================
-
   public String query(LLMRequest request) {
     return query(request.systemPrompt(), request.userPrompt(), request.parameters());
+  }
+
+  // For random api
+  public String query(ArrayList<CompiledAction> actions) {
+    return null;
   }
 
   public String query(String systemPrompt, String userPrompt) {
